@@ -209,6 +209,8 @@ If your agent environment runs continuously and supports scheduled jobs, you can
 
 In practice, that means a user can ask an OpenClaw-style agent, or any other 24x7 agent with cron-style scheduling, to create a daily Type 3 monitoring job from that example.
 
+If you want to use this skill with OpenClaw, clone this repository into the OpenClaw skills directory so the resulting path is `clawd/skills/clawd-media-track/`. A normal `git clone <repo-url>` run inside `clawd/skills` will create that `clawd-media-track` folder automatically. Only if you explicitly clone into an existing target directory will the repository contents land directly in that directory.
+
 ## PanSou: Public vs Self-Hosted
 
 `pansou-web` is required as the search backend, but self-hosting is optional.
