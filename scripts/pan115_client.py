@@ -112,6 +112,37 @@ class Pan115Client:
         self._min_interval = 1.0
 
     @staticmethod
+    def _normalize_item(item: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize raw p115client API shorthand fields to friendly names.
+
+        Mapping:
+            n   → name
+            s   → size
+            cid → dir_id
+        The raw keys are preserved for backward compatibility.
+        """
+        result = dict(item)
+        if "n" in result:
+            result["name"] = result.pop("n")
+        if "s" in result:
+            result["size"] = result.pop("s")
+        if "cid" in result:
+            result["dir_id"] = result.pop("cid")
+        return result
+
+    @staticmethod
+    def _normalize_children(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Recursively normalize a tree of raw API items."""
+        out: List[Dict[str, Any]] = []
+        for item in items:
+            n = Pan115Client._normalize_item(item)
+            children = n.pop("children", [])
+            if children:
+                n["children"] = Pan115Client._normalize_children(children)
+            out.append(n)
+        return out
+
+    @staticmethod
     def _normalize_cid(cid: Any) -> str:
         if not isinstance(cid, (str, int)):
             raise ValueError(f"dir_id must be a cid-like string or int, got {cid}")
@@ -219,10 +250,10 @@ class Pan115Client:
             for item in data.get("data", []):
                 fc = item.get("fc", "")
                 is_dir = fc == "0" or fc == 0
+                normalized = self._normalize_item(item)
                 if is_dir:
-                    item = dict(item)
-                    item["children"] = collect(item.get("cid", ""), current_depth + 1)
-                result_items.append(item)
+                    normalized["children"] = collect(normalized.get("dir_id", ""), current_depth + 1)
+                result_items.append(normalized)
             return result_items
 
         files = collect(cid, 1)
@@ -264,7 +295,8 @@ class Pan115Client:
                 fc = item.get("fc", "")
                 is_dir = fc == "0" or fc == 0
                 if is_dir:
-                    videos.extend(collect_videos(item.get("cid", ""), current_depth + 1))
+                    normalized_dir = self._normalize_item(item)
+                    videos.extend(collect_videos(normalized_dir.get("dir_id", ""), current_depth + 1))
                     continue
 
                 name = item.get("n", "").lower()
@@ -278,7 +310,7 @@ class Pan115Client:
                 if size_bytes < min_bytes:
                     continue
 
-                videos.append(item)
+                videos.append(self._normalize_item(item))
             return videos
 
         videos = collect_videos(cid, 1)
@@ -330,10 +362,10 @@ class Pan115Client:
         to_keep: List[Dict[str, Any]] = []
 
         for index, file_info in enumerate(snapshot.items):
-            name = file_info.get("n", "unknown")
-            fid = file_info.get("fid")
+            name = file_info.get("name", "unknown")
+            fid = file_info.get("file_id") or file_info.get("fid")
             try:
-                size_bytes = int(file_info.get("s", 0))
+                size_bytes = int(file_info.get("size", 0))
             except (TypeError, ValueError):
                 size_bytes = 0
 
@@ -498,8 +530,8 @@ class Pan115Client:
         for index in unique_indices:
             if 0 <= index < len(snapshot.items):
                 file_info = snapshot.items[index]
-                fid = file_info.get("fid")
-                name = file_info.get("n", "unknown")
+                fid = file_info.get("file_id") or file_info.get("fid")
+                name = file_info.get("name", "unknown")
                 if fid:
                     fids_to_delete.append(str(fid))
                     deleted_names.append(name)

@@ -194,6 +194,34 @@ class FakeP115ClientWithFiles(FakeP115Client):
         return {"state": True}
 
 
+class Pan115ClientFieldNormalizationTests(unittest.TestCase):
+    """TDD tests for normalizing 115 raw API fields to friendly names.
+
+    Raw 115 API returns: n=name, s=size, fid=file_id
+    We want the client to expose normalized keys so callers can use
+    file["name"], file["size"], file["file_id"] consistently.
+    """
+
+    def test_list_files_exposes_normalized_name(self):
+        pan115_client = load_pan115_module(self)
+        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+            with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
+                client = pan115_client.Pan115Client()
+        client._min_interval = 0
+        files = client.list_files(cid="root", depth=1)
+        self.assertEqual(files[0]["name"], "Season 1")
+
+    def test_list_video_files_exposes_normalized_name_and_size(self):
+        pan115_client = load_pan115_module(self)
+        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+            with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
+                client = pan115_client.Pan115Client()
+        client._min_interval = 0
+        files = client.list_video_files(cid="root", depth=1)
+        self.assertEqual(files[0]["name"], "episode01.mkv")
+        self.assertEqual(files[0]["size"], "1000")
+
+
 class Pan115ClientConfigTests(unittest.TestCase):
     def test_explicit_cookie_takes_priority(self):
         pan115_client = load_pan115_module(self)
@@ -249,7 +277,7 @@ class Pan115ClientListingTests(unittest.TestCase):
         files = client.list_files(cid="root", depth=1)
 
         self.assertEqual(len(files), 3)
-        self.assertEqual(files[0]["n"], "Season 1")
+        self.assertEqual(files[0]["name"], "Season 1")
         self.assertEqual(files[0]["children"], [])
 
     def test_list_files_defaults_to_depth_1(self):
@@ -276,9 +304,9 @@ class Pan115ClientListingTests(unittest.TestCase):
         files = client.list_files(cid="root", depth=2)
 
         self.assertEqual(len(files), 3)
-        self.assertEqual(files[0]["n"], "Season 1")
+        self.assertEqual(files[0]["name"], "Season 1")
         self.assertEqual(len(files[0]["children"]), 1)
-        self.assertEqual(files[0]["children"][0]["n"], "episode02.mp4")
+        self.assertEqual(files[0]["children"][0]["name"], "episode02.mp4")
 
     def test_list_files_rejects_recursive_scan_on_protected_directory(self):
         pan115_client = load_pan115_module(self)
@@ -307,7 +335,7 @@ class Pan115ClientListingTests(unittest.TestCase):
         files = client.list_video_files(cid="root", depth=1)
 
         self.assertEqual(len(files), 1)
-        self.assertEqual(files[0]["n"], "episode01.mkv")
+        self.assertEqual(files[0]["name"], "episode01.mkv")
 
     def test_list_video_files_depth_2_includes_one_nested_level(self):
         pan115_client = load_pan115_module(self)
@@ -320,8 +348,8 @@ class Pan115ClientListingTests(unittest.TestCase):
         files = client.list_video_files(cid="root", depth=2)
 
         self.assertEqual(len(files), 2)
-        self.assertEqual(files[0]["n"], "episode02.mp4")
-        self.assertEqual(files[1]["n"], "episode01.mkv")
+        self.assertEqual(files[0]["name"], "episode02.mp4")
+        self.assertEqual(files[1]["name"], "episode01.mkv")
 
     def test_list_video_files_snapshot_freezes_current_results(self):
         pan115_client = load_pan115_module(self)
@@ -335,7 +363,7 @@ class Pan115ClientListingTests(unittest.TestCase):
 
         self.assertEqual(len(snapshot), 2)
         self.assertFalse(snapshot.is_consumed())
-        self.assertEqual(snapshot[0]["n"], "episode02.mp4")
+        self.assertEqual(snapshot[0]["name"], "episode02.mp4")
         snapshot.mark_consumed()
         self.assertTrue(snapshot.is_consumed())
 
@@ -504,9 +532,9 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
         self.assertIn("episode02.mp4", result["moved"])
         self.assertIn("nested-pack", result["removed"])
         self.assertEqual(len(season_after), 3)
-        self.assertEqual(season_after[0]["n"], "episode01.mkv")
-        self.assertEqual(season_after[1]["n"], "notes.txt")
-        self.assertEqual(season_after[2]["n"], "episode02.mp4")
+        self.assertEqual(season_after[0]["name"], "episode01.mkv")
+        self.assertEqual(season_after[1]["name"], "notes.txt")
+        self.assertEqual(season_after[2]["name"], "episode02.mp4")
 
     def test_flatten_directory_rejects_root_directory(self):
         pan115_client = load_pan115_module(self)
@@ -574,9 +602,9 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
         self.assertIn("Demo.Movie.2026.2160p.mkv", result["moved"])
         self.assertIn("movie-pack", result["removed"])
         self.assertEqual(len(movie_after), 3)
-        self.assertEqual(movie_after[0]["n"], "Demo.Movie.2026.1080p.mkv")
-        self.assertEqual(movie_after[1]["n"], "readme.txt")
-        self.assertEqual(movie_after[2]["n"], "Demo.Movie.2026.2160p.mkv")
+        self.assertEqual(movie_after[0]["name"], "Demo.Movie.2026.1080p.mkv")
+        self.assertEqual(movie_after[1]["name"], "readme.txt")
+        self.assertEqual(movie_after[2]["name"], "Demo.Movie.2026.2160p.mkv")
 
 
 if __name__ == "__main__":
