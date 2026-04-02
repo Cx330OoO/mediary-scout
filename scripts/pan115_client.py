@@ -486,18 +486,21 @@ class Pan115Client:
             raise ValueError("plan must be a TransferPlan")
 
         results: List[Dict[str, Any]] = []
-        for url in plan.to_urls():
-            success, message = self.transfer(url=url, save_dir_id=save_dir_id)
-            results.append(
-                {
-                    "success": success,
-                    "message": message,
-                    "url": str(url),
-                    "title": getattr(url, "title", ""),
-                    "snapshot_id": getattr(url, "snapshot_id", ""),
-                    "link_index": getattr(url, "link_index", None),
-                }
-            )
+        try:
+            for url in plan.to_urls():
+                success, message = self.transfer(url=url, save_dir_id=save_dir_id)
+                results.append(
+                    {
+                        "success": success,
+                        "message": message,
+                        "url": str(url),
+                        "title": getattr(url, "title", ""),
+                        "snapshot_id": getattr(url, "snapshot_id", ""),
+                        "link_index": getattr(url, "link_index", None),
+                    }
+                )
+        finally:
+            plan.release()
         return results
 
     def move_items(self, *, item_ids: List[str], target_dir_id: str) -> Dict[str, List[str]]:

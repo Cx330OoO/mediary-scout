@@ -239,6 +239,10 @@ plan = snapshot.create_transfer_plan(chosen_indices, keyword="太平年")
 results = pan115.execute_transfer_plan(plan=plan, save_dir_id=folder_id)
 ```
 
+Between plan creation and execution:
+- Do NOT call `pansou.search()` again for the same keyword in the same Python session.
+- Runtime guard rejects same-keyword re-search while the plan is still active.
+
 ### Real Example - What Went Wrong
 
 **Target**: "黑暗骑士" (The Dark Knight)

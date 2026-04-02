@@ -1,7 +1,7 @@
 import os
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 def load_pan115_module(test_case: unittest.TestCase):
@@ -576,6 +576,78 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
             client.client.offline_calls[0][0],
             {"url": "magnet:?xt=urn:btih:abcdef123456", "wp_path_id": "123"},
         )
+
+    def test_execute_transfer_plan_releases_active_keyword_lock(self):
+        pan115_client = load_pan115_module(self)
+        scripts_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "scripts")
+        )
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        import pansou_client  # type: ignore
+
+        pansou_client._SEARCH_CACHE.clear()
+        pansou_client._ACTIVE_TRANSFER_PLANS.clear()
+
+        with patch.dict(
+            os.environ,
+            {
+                "PAN115_COOKIE": "env-cookie",
+                "PANSOU_BASE_URL": "http://env.example",
+            },
+            clear=True,
+        ):
+            with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
+                client = pan115_client.Pan115Client()
+            search_client = pansou_client.PansouClient()
+
+        snapshot = search_client.extract_link_snapshot(
+            [
+                {
+                    "title": "Plan Item A",
+                    "channel": "demo",
+                    "links": [
+                        {
+                            "type": "115",
+                            "url": "https://115cdn.com/s/abc123?password=pass",
+                            "password": "pass",
+                        }
+                    ],
+                }
+            ],
+            link_type="115",
+        )
+        plan = snapshot.create_transfer_plan([0], keyword="白日提灯")
+
+        with self.assertRaises(ValueError):
+            search_client.search("白日提灯")
+
+        client.execute_transfer_plan(plan=plan, save_dir_id="123")
+
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {
+            "code": 0,
+            "data": {
+                "results": [
+                    {
+                        "title": "Result A",
+                        "channel": "demo",
+                        "links": [
+                            {
+                                "type": "115",
+                                "url": "https://115cdn.com/s/after-execute",
+                            }
+                        ],
+                    }
+                ]
+            },
+        }
+        search_client.session.post = Mock(side_effect=[response])
+
+        result = search_client.search("白日提灯")
+
+        self.assertEqual(result["115"][0]["title"], "Result A")
 
     def test_move_items_calls_fs_move(self):
         pan115_client = load_pan115_module(self)

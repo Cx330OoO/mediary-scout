@@ -57,6 +57,7 @@ If any item above is violated, stop and report failure instead of continuing.
   └── Execute only the `TransferPlan` created in Step 4
   └── `pan115.execute_transfer_plan(plan=plan, save_dir_id=...)`
   └── Do NOT re-run extract/list before transfer
+  └── Same-keyword `pansou.search()` is runtime-blocked while this plan is active in the current Python session
   └── Record success/msg for each
   └── ⚠️ STOP - Output `transfer_ok_count=<n>` and per-link `success/msg`
 

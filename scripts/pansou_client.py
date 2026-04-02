@@ -11,6 +11,7 @@ import requests
 
 
 _SEARCH_CACHE: Dict[str, Dict[str, Any]] = {}
+_ACTIVE_TRANSFER_PLANS: Dict[str, Dict[str, Any]] = {}
 
 
 class BoundTransferUrl(str):
@@ -38,10 +39,13 @@ class TransferPlan:
         snapshot_id: str,
         keyword: Optional[str],
         urls: List[BoundTransferUrl],
+        owner: Optional[Any] = None,
     ):
         self.snapshot_id = snapshot_id
         self.keyword = keyword
         self._urls = tuple(urls)
+        self._owner = owner
+        self._lock_keyword: Optional[str] = None
 
     def __len__(self):
         return len(self._urls)
@@ -53,6 +57,10 @@ class TransferPlan:
 
     def to_urls(self) -> List[BoundTransferUrl]:
         return list(self._urls)
+
+    def release(self) -> None:
+        if self._owner is not None:
+            self._owner._release_transfer_plan(self)
 
 
 class LinkCollection:
@@ -100,9 +108,10 @@ class LinkCollection:
 
 
 class LinkSnapshot:
-    def __init__(self, items: List[Dict[str, Any]]):
+    def __init__(self, items: List[Dict[str, Any]], owner: Optional[Any] = None):
         self._items = tuple(dict(item) for item in items)
         self.snapshot_id = self._compute_snapshot_id(items)
+        self._owner = owner
 
     @staticmethod
     def _compute_snapshot_id(items: List[Dict[str, Any]]) -> str:
@@ -150,11 +159,15 @@ class LinkSnapshot:
     def create_transfer_plan(
         self, indices: List[int], *, keyword: Optional[str] = None
     ) -> TransferPlan:
-        return TransferPlan(
+        plan = TransferPlan(
             snapshot_id=self.snapshot_id,
             keyword=keyword,
             urls=self.bind_indices(indices),
+            owner=self._owner,
         )
+        if self._owner is not None:
+            self._owner._activate_transfer_plan(plan)
+        return plan
 
 
 class PansouClient:
@@ -163,6 +176,7 @@ class PansouClient:
         base_url: Optional[str] = None,
         wait_time: int = 10,
         cache_ttl_seconds: int = 3600,
+        plan_lock_ttl_seconds: int = 3600,
         cache_path: Optional[str] = None,
     ):
         self.base_url = base_url or os.getenv("PANSOU_BASE_URL")
@@ -173,6 +187,7 @@ class PansouClient:
 
         self.wait_time = wait_time
         self.cache_ttl_seconds = cache_ttl_seconds
+        self.plan_lock_ttl_seconds = plan_lock_ttl_seconds
         self.cache_path = cache_path or os.path.join(
             tempfile.gettempdir(), "clawd-media-track-pansou-cache.json"
         )
@@ -210,6 +225,48 @@ class PansouClient:
     def _cache_key(self, effective_keyword: str) -> str:
         return f"{self.base_url}|{effective_keyword}"
 
+    def _normalize_plan_keyword(self, keyword: str) -> str:
+        effective_keyword, _ = self._prepare_keyword(keyword)
+        return effective_keyword
+
+    def _purge_expired_transfer_plans(self) -> None:
+        now = time()
+        expired = [
+            key
+            for key, record in _ACTIVE_TRANSFER_PLANS.items()
+            if (now - float(record["created_at"])) > self.plan_lock_ttl_seconds
+        ]
+        for key in expired:
+            _ACTIVE_TRANSFER_PLANS.pop(key, None)
+
+    def _activate_transfer_plan(self, plan: TransferPlan) -> None:
+        if not plan.keyword:
+            raise ValueError("keyword is required to create a transfer plan")
+
+        self._purge_expired_transfer_plans()
+        lock_keyword = self._normalize_plan_keyword(plan.keyword)
+        _ACTIVE_TRANSFER_PLANS[lock_keyword] = {
+            "snapshot_id": plan.snapshot_id,
+            "created_at": time(),
+        }
+        plan._lock_keyword = lock_keyword
+
+    def _release_transfer_plan(self, plan: TransferPlan) -> None:
+        if not plan._lock_keyword:
+            return
+
+        record = _ACTIVE_TRANSFER_PLANS.get(plan._lock_keyword)
+        if record and record.get("snapshot_id") == plan.snapshot_id:
+            _ACTIVE_TRANSFER_PLANS.pop(plan._lock_keyword, None)
+        plan._lock_keyword = None
+
+    def _assert_keyword_not_locked(self, effective_keyword: str) -> None:
+        self._purge_expired_transfer_plans()
+        if effective_keyword in _ACTIVE_TRANSFER_PLANS:
+            raise ValueError(
+                "ACTIVE_TRANSFER_PLAN_EXISTS: do not re-search; execute or cancel the existing plan"
+            )
+
     def _load_file_cache(self) -> Dict[str, Dict[str, Any]]:
         if not os.path.exists(self.cache_path):
             return {}
@@ -225,6 +282,7 @@ class PansouClient:
 
     def search(self, keyword: str) -> Dict[str, Any]:
         effective_keyword, warnings = self._prepare_keyword(keyword)
+        self._assert_keyword_not_locked(effective_keyword)
         cache_key = self._cache_key(effective_keyword)
         if cache_key not in _SEARCH_CACHE:
             _SEARCH_CACHE.update(self._load_file_cache())
@@ -326,4 +384,4 @@ class PansouClient:
     def extract_link_snapshot(
         self, results: List[Dict[str, Any]], link_type: Optional[str] = None
     ) -> LinkSnapshot:
-        return LinkSnapshot(self._collect_links(results, link_type=link_type))
+        return LinkSnapshot(self._collect_links(results, link_type=link_type), owner=self)

@@ -75,6 +75,7 @@ class PansouTransferBindingTests(unittest.TestCase):
     def setUp(self):
         pansou_client = load_pansou_module(self)
         pansou_client._SEARCH_CACHE.clear()
+        pansou_client._ACTIVE_TRANSFER_PLANS.clear()
         cache_path = os.path.join(tempfile.gettempdir(), "pansou-cache-test.json")
         if os.path.exists(cache_path):
             os.remove(cache_path)
@@ -174,6 +175,85 @@ class PansouTransferBindingTests(unittest.TestCase):
         self.assertEqual(len(plan), 2)
         self.assertEqual(str(plan[0]), "https://115cdn.com/s/resource-b?password=bbb")
         self.assertEqual(str(plan[1]), "https://115cdn.com/s/resource-a?password=aaa")
+
+    def test_search_rejects_same_keyword_when_active_transfer_plan_exists(self):
+        pansou_client = load_pansou_module(self)
+
+        with patch.dict(os.environ, {"PANSOU_BASE_URL": "http://env.example"}, clear=True):
+            client = pansou_client.PansouClient()
+
+        results = [
+            {
+                "title": "Demo Resource A",
+                "channel": "demo",
+                "links": [
+                    {
+                        "type": "115",
+                        "url": "https://115cdn.com/s/resource-a?password=aaa",
+                        "password": "aaa",
+                    }
+                ],
+            }
+        ]
+
+        snapshot = client.extract_link_snapshot(results, link_type="115")
+        snapshot.create_transfer_plan([0], keyword="白日提灯")
+        client.session.post = Mock(
+            side_effect=[
+                FakeJSONResponse(
+                    {
+                        "code": 0,
+                        "data": {"results": []},
+                    }
+                )
+            ]
+        )
+
+        with self.assertRaises(ValueError) as ctx:
+            client.search("白日提灯")
+
+        self.assertIn("ACTIVE_TRANSFER_PLAN_EXISTS", str(ctx.exception))
+
+    def test_expired_active_transfer_plan_allows_same_keyword_search(self):
+        pansou_client = load_pansou_module(self)
+
+        payload = {
+            "code": 0,
+            "data": {
+                "results": [
+                    {
+                        "title": "Result A",
+                        "channel": "demo",
+                        "links": [{"type": "115", "url": "https://115cdn.com/s/a"}],
+                    }
+                ]
+            },
+        }
+
+        with patch.dict(os.environ, {"PANSOU_BASE_URL": "http://env.example"}, clear=True):
+            client = pansou_client.PansouClient(plan_lock_ttl_seconds=1)
+
+        snapshot = client.extract_link_snapshot(
+            [
+                {
+                    "title": "Demo Resource A",
+                    "channel": "demo",
+                    "links": [{"type": "115", "url": "https://115cdn.com/s/resource-a"}],
+                }
+            ],
+            link_type="115",
+        )
+        client.session.post = Mock(side_effect=[FakeJSONResponse(payload)])
+
+        with patch.object(pansou_client, "time", return_value=10_000):
+            snapshot.create_transfer_plan([0], keyword="白日提灯")
+            with self.assertRaises(ValueError):
+                client.search("白日提灯")
+
+        with patch.object(pansou_client, "time", return_value=10_002):
+            result = client.search("白日提灯")
+
+        self.assertEqual(result["115"][0]["title"], "Result A")
 
     def test_search_cache_survives_new_client_via_cache_file(self):
         pansou_client = load_pansou_module(self)

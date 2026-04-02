@@ -111,6 +111,7 @@ For transfer decisions, indices are evidence only; execution input must be stabl
 - Transfer step MUST execute only that plan via `pan115.execute_transfer_plan(plan=plan, ...)`.
 - Do not execute via `all_links[i]`, raw re-extracted strings, or freshly rebound indices at execution time.
 - Between decision and transfer, do NOT re-extract/re-list/re-sort links.
+- Runtime guard: once a `TransferPlan` exists, re-searching the same normalized keyword in the same Python session is rejected until the plan is executed, released, or expires by TTL.
 
 Forbidden patterns:
 - Re-running `extract_all_links(...).each(...)` between decision and transfer.
