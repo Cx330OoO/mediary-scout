@@ -204,7 +204,7 @@ class Pan115ClientFieldNormalizationTests(unittest.TestCase):
 
     def test_list_files_exposes_normalized_name(self):
         pan115_client = load_pan115_module(self)
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
         client._min_interval = 0
@@ -213,7 +213,7 @@ class Pan115ClientFieldNormalizationTests(unittest.TestCase):
 
     def test_list_video_files_exposes_normalized_name_and_size(self):
         pan115_client = load_pan115_module(self)
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
         client._min_interval = 0
@@ -223,7 +223,7 @@ class Pan115ClientFieldNormalizationTests(unittest.TestCase):
 
     def test_list_files_preserves_raw_keys_for_backward_compatibility(self):
         pan115_client = load_pan115_module(self)
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
         client._min_interval = 0
@@ -236,22 +236,22 @@ class Pan115ClientConfigTests(unittest.TestCase):
     def test_explicit_cookie_takes_priority(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115Client):
-                client = pan115_client.Pan115Client(cookie="explicit-cookie")
+                client = pan115_client.Pan115Client(cookie="UID=explicit;CID=explicit;SEID=explicit;KID=explicit")
 
-        self.assertEqual(client.cookie_str, "explicit-cookie")
-        self.assertEqual(client.client.cookies, "explicit-cookie")
+        self.assertEqual(client.cookie_str, "UID=explicit;CID=explicit;SEID=explicit;KID=explicit")
+        self.assertEqual(client.client.cookies, "UID=explicit;CID=explicit;SEID=explicit;KID=explicit")
 
     def test_env_cookie_is_used_when_constructor_cookie_missing(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115Client):
                 client = pan115_client.Pan115Client()
 
-        self.assertEqual(client.cookie_str, "env-cookie")
-        self.assertEqual(client.client.cookies, "env-cookie")
+        self.assertEqual(client.cookie_str, "UID=test;CID=test;SEID=test;KID=test")
+        self.assertEqual(client.client.cookies, "UID=test;CID=test;SEID=test;KID=test")
 
     def test_missing_cookie_raises_clear_error(self):
         pan115_client = load_pan115_module(self)
@@ -266,7 +266,7 @@ class Pan115ClientConfigTests(unittest.TestCase):
     def test_constructor_sets_expected_headers_on_underlying_client(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115Client):
                 client = pan115_client.Pan115Client()
 
@@ -279,7 +279,7 @@ class Pan115ClientListingTests(unittest.TestCase):
     def test_list_files_depth_1_returns_current_level_items_only(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -293,7 +293,7 @@ class Pan115ClientListingTests(unittest.TestCase):
     def test_list_files_defaults_to_depth_1(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -306,7 +306,7 @@ class Pan115ClientListingTests(unittest.TestCase):
     def test_list_files_depth_2_includes_nested_children(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -323,7 +323,7 @@ class Pan115ClientListingTests(unittest.TestCase):
 
         with patch.dict(
             os.environ,
-            {"PAN115_COOKIE": "env-cookie", "TV_SHOWS_CID": "root"},
+            {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test", "TV_SHOWS_CID": "root"},
             clear=True,
         ):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
@@ -337,7 +337,7 @@ class Pan115ClientListingTests(unittest.TestCase):
     def test_list_video_files_depth_1_stays_shallow(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -350,7 +350,7 @@ class Pan115ClientListingTests(unittest.TestCase):
     def test_list_video_files_depth_2_includes_one_nested_level(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -364,7 +364,7 @@ class Pan115ClientListingTests(unittest.TestCase):
     def test_list_video_files_snapshot_freezes_current_results(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -380,7 +380,7 @@ class Pan115ClientListingTests(unittest.TestCase):
     def test_get_file_info_returns_raw_directory_payload(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -392,7 +392,7 @@ class Pan115ClientListingTests(unittest.TestCase):
     def test_get_path_joins_path_segments(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -403,7 +403,7 @@ class Pan115ClientListingTests(unittest.TestCase):
     def test_preview_snapshot_deletions_splits_delete_and_keep_lists(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -421,7 +421,7 @@ class Pan115ClientListingTests(unittest.TestCase):
     def test_preview_snapshot_deletions_rejects_invalid_input(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -435,7 +435,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
     def test_create_folder_returns_new_cid(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -447,7 +447,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
     def test_transfer_rejects_unbound_raw_url_by_default(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -469,7 +469,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
             sys.path.insert(0, scripts_dir)
         import pansou_client  # type: ignore
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -504,7 +504,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
             sys.path.insert(0, scripts_dir)
         import pansou_client  # type: ignore
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -540,7 +540,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
             sys.path.insert(0, scripts_dir)
         import pansou_client  # type: ignore
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -592,7 +592,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
         with patch.dict(
             os.environ,
             {
-                "PAN115_COOKIE": "env-cookie",
+                "PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test",
                 "PANSOU_BASE_URL": "http://env.example",
             },
             clear=True,
@@ -652,7 +652,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
     def test_move_items_calls_fs_move(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -666,7 +666,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
     def test_delete_snapshot_files_dry_run_does_not_delete(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -682,7 +682,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
     def test_delete_snapshot_files_executes_by_fid_and_consumes_snapshot(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -699,7 +699,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
     def test_flatten_directory_moves_nested_videos_and_removes_empty_dirs(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -717,7 +717,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
     def test_flatten_directory_rejects_root_directory(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -734,7 +734,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
 
         with patch.dict(
             os.environ,
-            {"PAN115_COOKIE": "env-cookie", "TV_SHOWS_CID": "season-safe"},
+            {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test", "TV_SHOWS_CID": "season-safe"},
             clear=True,
         ):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
@@ -750,7 +750,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
     def test_flatten_directory_rejects_non_season_directory(self):
         pan115_client = load_pan115_module(self)
 
-        with patch.dict(os.environ, {"PAN115_COOKIE": "env-cookie"}, clear=True):
+        with patch.dict(os.environ, {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test"}, clear=True):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):
                 client = pan115_client.Pan115Client()
 
@@ -767,7 +767,7 @@ class Pan115ClientWriteMethodTests(unittest.TestCase):
 
         with patch.dict(
             os.environ,
-            {"PAN115_COOKIE": "env-cookie", "MOVIES_CID": "movies-parent"},
+            {"PAN115_COOKIE": "UID=test;CID=test;SEID=test;KID=test", "MOVIES_CID": "movies-parent"},
             clear=True,
         ):
             with patch.object(pan115_client, "P115Client", FakeP115ClientWithFiles):

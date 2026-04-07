@@ -218,6 +218,10 @@ If missing:
 - wait for the cookie
 - test connectivity with a minimal read operation
 - only write it into `.env` after a successful connectivity check
+- **CRITICAL: wrap the cookie value in double quotes** when writing to `.env`
+  - The cookie contains semicolons (`;`) which break shell parsing via `source .env`
+  - Correct: `PAN115_COOKIE="UID=...;CID=...;SEID=...;KID=..."`
+  - Wrong: `PAN115_COOKIE=UID=...;CID=...;SEID=...;KID=...`
 
 Suggested relay:
 

@@ -101,6 +101,25 @@ class Pan115Client:
                 "PAN115_COOKIE must be set in environment variables or passed to the constructor."
             )
 
+        # Strip surrounding quotes that may come from .env files
+        cookie = cookie.strip('"').strip("'")
+
+        # Validate cookie completeness: must contain UID, CID, SEID, KID
+        required_keys = {"UID", "CID", "SEID", "KID"}
+        present_keys = {
+            part.split("=", 1)[0].strip()
+            for part in cookie.split(";")
+            if "=" in part
+        }
+        missing = required_keys - present_keys
+        if missing:
+            raise ValueError(
+                f"PAN115_COOKIE is incomplete: missing {', '.join(sorted(missing))}. "
+                f"This usually means the cookie value in .env is not wrapped in double quotes, "
+                f"causing shell to truncate at the first semicolon. "
+                f'Fix: PAN115_COOKIE="UID=...;CID=...;SEID=...;KID=..."'
+            )
+
         self.cookie_str = cookie
         self.client: Any = P115Client(cookies=cookie, check_for_relogin=True)
 
