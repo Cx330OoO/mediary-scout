@@ -239,11 +239,39 @@ class Pan115Client:
         return func(*args, **kwargs)
 
     def _get_all_items(self, cid: str) -> List[Dict[str, Any]]:
-        result = self._api_call(self.client.fs_files, {"cid": cid, "offset": 0, "limit": 32})
-        data = result if isinstance(result, dict) else {}
-        if not data or not data.get("state"):
-            return []
-        return data.get("data", [])
+        """Fetch all items from a folder, automatically handling pagination.
+        
+        115 API has a max limit of 1150 per request and max 10,000 total items.
+        This method loops through all pages to get complete results.
+        """
+        PAGE_SIZE = 1150  # Max allowed by 115 API
+        MAX_ITEMS = 10000  # 115 API hard limit
+        all_items: List[Dict[str, Any]] = []
+        offset = 0
+        
+        while offset < MAX_ITEMS:
+            result = self._api_call(
+                self.client.fs_files,
+                {"cid": cid, "offset": offset, "limit": PAGE_SIZE}
+            )
+            data = result if isinstance(result, dict) else {}
+            
+            if not data or not data.get("state"):
+                break
+            
+            items = data.get("data", [])
+            if not items:
+                break
+            
+            all_items.extend(items)
+            
+            # If we got less than PAGE_SIZE, we've reached the end
+            if len(items) < PAGE_SIZE:
+                break
+            
+            offset += PAGE_SIZE
+        
+        return all_items
 
     def list_files(
         self, cid: str = "0", limit: int = 1000, depth: int = 1
@@ -261,16 +289,11 @@ class Pan115Client:
             if current_depth > depth:
                 return []
 
-            result = self._api_call(
-                self.client.fs_files,
-                {"cid": current_id, "offset": 0, "limit": min(limit, 32)},
-            )
-            data = result if isinstance(result, dict) else {}
-            if not data or not data.get("state"):
-                return []
-
+            # Use _get_all_items for automatic pagination
+            items = self._get_all_items(current_id)
+            
             result_items: List[Dict[str, Any]] = []
-            for item in data.get("data", []):
+            for item in items[:limit]:  # Respect the limit parameter
                 fc = item.get("fc", "")
                 is_dir = fc == "0" or fc == 0
                 normalized = self._normalize_item(item)
@@ -305,16 +328,11 @@ class Pan115Client:
             if current_depth > depth:
                 return []
 
-            result = self._api_call(
-                self.client.fs_files,
-                {"cid": current_id, "offset": 0, "limit": min(limit, 32)},
-            )
-            data = result if isinstance(result, dict) else {}
-            if not data or not data.get("state"):
-                return []
-
+            # Use _get_all_items for automatic pagination
+            all_items = self._get_all_items(current_id)
+            
             videos: List[Dict[str, Any]] = []
-            for item in data.get("data", []):
+            for item in all_items[:limit]:  # Respect the limit parameter
                 fc = item.get("fc", "")
                 is_dir = fc == "0" or fc == 0
                 if is_dir:
