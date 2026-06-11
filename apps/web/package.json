@@ -1,0 +1,8 @@
+{
+  "name": "@media-track/web",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@media-track/workflow": "*"
+  }
+}

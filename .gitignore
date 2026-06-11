@@ -17,4 +17,6 @@ venv/
 
 node_modules/
 dist/
+.next/
+apps/**/.next/
 coverage/
