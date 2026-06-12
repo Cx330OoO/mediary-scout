@@ -1053,3 +1053,121 @@ p {
   color: var(--text-muted);
   white-space: nowrap;
 }
+
+/* Library — all tracked titles grid */
+.library-titles {
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.title-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 16px;
+}
+
+.library-title-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-card);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: background 0.15s ease;
+}
+
+.library-title-card:hover {
+  background: var(--bg-raised);
+}
+
+.library-title-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.library-title-head h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.library-title-head span {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.season-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.season-rows li + li {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.season-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  text-decoration: none;
+  color: var(--text);
+  border-radius: 4px;
+}
+
+.season-row:hover .season-row-name {
+  color: var(--accent);
+}
+
+.season-row-name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.season-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.season-chip.active {
+  color: var(--accent);
+  background: rgba(30, 215, 96, 0.12);
+}
+
+.season-chip.completed {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.season-row-progress {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.season-row-progress span {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+.season-row-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

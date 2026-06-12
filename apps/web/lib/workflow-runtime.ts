@@ -75,7 +75,10 @@ export async function getWorkflowStatusView(
   targetRepository: WorkflowRepository,
 ): Promise<TrackedSeasonStatusView | null> {
   const trackedStates = await targetRepository.listTrackedSeasonStates();
-  const firstTracked = trackedStates[0];
+  // The spotlight is the season that still needs attention: prefer an
+  // actively-airing season over completed ones.
+  const firstTracked =
+    trackedStates.find((state) => state.season.status === "active") ?? trackedStates[0];
   if (!firstTracked) {
     return null;
   }

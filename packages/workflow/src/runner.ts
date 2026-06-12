@@ -179,13 +179,19 @@ export async function runSeriesInitializationAndPersist(input: {
         index === 0
           ? result.transferAttempts.map((attempt) => ({ ...attempt, workflowRunId: seasonRunId }))
           : [],
-      notifications: [
-        {
-          ...result.notification,
-          id: `notification_${seasonRunId}`,
-          workflowRunId: seasonRunId,
-        },
-      ],
+      // The series notification is title-level: one feed entry per series
+      // run, not one per season record. It rides on the first season only,
+      // like the resource evidence.
+      notifications:
+        index === 0
+          ? [
+              {
+                ...result.notification,
+                id: `notification_${seasonRunId}`,
+                workflowRunId: seasonRunId,
+              },
+            ]
+          : [],
     });
   }
 

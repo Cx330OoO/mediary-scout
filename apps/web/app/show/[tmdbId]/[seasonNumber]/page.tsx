@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowLeft, CheckCircle2, Clock3, DownloadCloud, TriangleAlert } from "lucide-react";
 import { getTrackedSeasonStatusView } from "@media-track/workflow";
+import { AppSidebar } from "../../../../components/app-sidebar";
 import { ensureDemoSeeded, getWorkflowRepository } from "../../../../lib/workflow-runtime";
 
 const displayLabels = {
@@ -27,10 +28,11 @@ export default async function ShowPage({
 }) {
   return (
     <div className="app-shell">
+      <AppSidebar active="library" />
       <main className="main product-main">
-        <Link className="nav-item" href="/" style={{ display: "inline-flex", marginBottom: 16 }}>
+        <Link className="nav-item" href="/?tab=library" style={{ display: "inline-flex", marginBottom: 16 }}>
           <ArrowLeft size={16} aria-hidden />
-          返回
+          返回媒体库
         </Link>
         <Suspense fallback={<ShowSkeleton />}>
           <ShowDetail params={params} />

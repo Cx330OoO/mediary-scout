@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "media-track-web",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "MEDIA_TRACK_WEB_DB_PATH=.media-track-live-series.sqlite",
+        "MEDIA_TRACK_DEMO_SEED=0",
+        "npm",
+        "run",
+        "dev:web"
+      ],
+      "autoPort": true,
+      "port": 3000
+    }
+  ]
+}

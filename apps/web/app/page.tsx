@@ -5,13 +5,12 @@ import {
   CheckCircle2,
   Clock3,
   DownloadCloud,
-  Film,
   FolderOpen,
-  Library,
   Search,
   ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
+import { AppSidebar } from "../components/app-sidebar";
 import { RequestSeriesButton } from "../components/request-series-button";
 import { RequestTrackButton } from "../components/request-track-button";
 import { getLibraryDashboard, getSearchView } from "../lib/search-page";
@@ -44,52 +43,7 @@ export default async function Page({
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-mark">
-            <Film size={18} aria-hidden />
-          </span>
-          <span className="brand-copy">
-            <strong>Media Track</strong>
-            <span>115 library ops</span>
-          </span>
-        </div>
-
-        <nav aria-label="主导航">
-          <ul className="nav-list">
-            <li>
-              <Link className={`nav-item ${activeTab === "search" ? "is-active" : ""}`} href={`/?tab=search&q=${encodeURIComponent(query)}`}>
-                <Search size={16} aria-hidden />
-                搜索
-              </Link>
-            </li>
-            <li>
-              <Link className={`nav-item ${activeTab === "library" ? "is-active" : ""}`} href="/?tab=library">
-                <Library size={16} aria-hidden />
-                媒体库
-              </Link>
-            </li>
-            <li>
-              <Link className="nav-item" href="/notifications">
-                <Bell size={16} aria-hidden />
-                通知
-              </Link>
-            </li>
-          </ul>
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="health-card">
-            <span className="health-icon">
-              <ShieldCheck size={16} aria-hidden />
-            </span>
-            <span>
-              <strong>115 已连接</strong>
-              <span>最近验证 2 分钟前</span>
-            </span>
-          </div>
-        </div>
-      </aside>
+      <AppSidebar active={activeTab} searchQuery={query} />
 
       <main className="main product-main">
         <div className="product-tabs" role="tablist" aria-label="媒体工作区">
@@ -224,12 +178,19 @@ async function LibrarySurface() {
     .map((episode) => episodeLabel(episode.episodeCode, seasonCode));
   const unavailableCount = tracked.totalEpisodes - tracked.latestAiredEpisode;
 
+  const totalSeasonCount = dashboard.libraryTitles.reduce(
+    (sum, entry) => sum + entry.seasons.length,
+    0,
+  );
+
   return (
     <section className="library-surface">
       <div className="section-heading library-heading">
         <div>
           <h1>我的媒体库</h1>
-          <p>{tracked.title} 正在自动追踪</p>
+          <p>
+            {dashboard.libraryTitles.length} 部剧 · {totalSeasonCount} 个追踪季
+          </p>
         </div>
       </div>
 
@@ -346,12 +307,62 @@ async function LibrarySurface() {
                 </span>
                 <span>
                   <strong>{tracked.title}/Season {String(tracked.seasonNumber).padStart(2, "0")}</strong>
-                  <small>目标目录保持扁平化</small>
+                  <small>统一 staging 归一化后按季落位</small>
                 </span>
               </div>
             </div>
           </section>
         </aside>
+      </section>
+
+      <section className="library-titles" aria-label="全部追踪">
+        <div className="section-heading">
+          <div>
+            <h2>全部追踪</h2>
+            <p>每季独立监控，点击查看集数详情</p>
+          </div>
+        </div>
+        <div className="title-card-grid">
+          {dashboard.libraryTitles.map((entry) => (
+            <article className="library-title-card" key={entry.titleId}>
+              <div className="library-title-head">
+                <h3>{entry.title}</h3>
+                <span>{entry.year}</span>
+              </div>
+              <ul className="season-rows">
+                {entry.seasons.map((seasonEntry) => {
+                  const percent =
+                    seasonEntry.totalEpisodes > 0
+                      ? Math.round((seasonEntry.obtainedCount / seasonEntry.totalEpisodes) * 100)
+                      : 0;
+                  return (
+                    <li key={seasonEntry.trackedSeasonId}>
+                      <Link
+                        className="season-row"
+                        href={`/show/${entry.tmdbId}/${seasonEntry.seasonNumber}`}
+                      >
+                        <span className="season-row-name">第 {seasonEntry.seasonNumber} 季</span>
+                        <span className={`season-chip ${seasonEntry.status}`}>
+                          {seasonEntry.status === "active"
+                            ? "追更中"
+                            : seasonEntry.status === "completed"
+                              ? "已完结"
+                              : seasonEntry.status}
+                        </span>
+                        <span className="season-row-progress" aria-hidden>
+                          <span style={{ width: `${percent}%` }} />
+                        </span>
+                        <span className="season-row-count">
+                          {seasonEntry.obtainedCount}/{seasonEntry.totalEpisodes}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </article>
+          ))}
+        </div>
       </section>
     </section>
   );

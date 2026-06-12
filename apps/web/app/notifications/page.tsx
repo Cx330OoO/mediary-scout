@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { ArrowLeft, Bell, CheckCircle2, CircleSlash, DownloadCloud, Layers, ShieldCheck } from "lucide-react";
+import { Bell, CheckCircle2, CircleSlash, DownloadCloud, Layers, ShieldCheck } from "lucide-react";
 import type { NotificationEvent } from "@media-track/workflow";
+import { AppSidebar } from "../../components/app-sidebar";
 import { ensureDemoSeeded, getWorkflowRepository } from "../../lib/workflow-runtime";
 
 const kindMeta: Record<string, { label: string; tone: string; icon: typeof Bell }> = {
@@ -17,11 +17,8 @@ const kindMeta: Record<string, { label: string; tone: string; icon: typeof Bell 
 export default function NotificationsPage() {
   return (
     <div className="app-shell">
+      <AppSidebar active="notifications" />
       <main className="main product-main">
-        <Link className="nav-item" href="/" style={{ display: "inline-flex", marginBottom: 16 }}>
-          <ArrowLeft size={16} aria-hidden />
-          返回
-        </Link>
         <div className="section-heading library-heading">
           <div>
             <h1>通知</h1>
