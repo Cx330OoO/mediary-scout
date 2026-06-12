@@ -18,7 +18,16 @@ export const demoMediaSearchProvider: MediaSearchProvider = {
 };
 
 export function findDemoCandidateById(candidateId: string): MediaSearchCandidate | null {
+  // Candidate ids may reference ANY season (tmdb_tv_{id}_s{n}); match by tmdbId.
+  const tvMatch = /^tmdb_tv_(\d+)_s\d+$/.exec(candidateId);
+  if (tvMatch) {
+    return findDemoCandidateByTmdbId(Number(tvMatch[1]));
+  }
   return demoCandidates.find((candidate) => demoCandidateId(candidate) === candidateId) ?? null;
+}
+
+export function findDemoCandidateByTmdbId(tmdbId: number): MediaSearchCandidate | null {
+  return demoCandidates.find((candidate) => candidate.tmdbId === tmdbId) ?? null;
 }
 
 export function demoCandidateId(candidate: MediaSearchCandidate): string {

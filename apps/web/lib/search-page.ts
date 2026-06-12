@@ -101,6 +101,8 @@ export async function getLibraryDashboard(): Promise<LibraryDashboard> {
   const dashboard = dashboardStateFromTrackedSeason(trackedSeason);
   if (notifications.length > 0) {
     dashboard.events = notifications.map((notification) => ({
+      id: notification.id,
+      kind: notification.kind,
       title: notification.title,
       body: notification.body,
     }));

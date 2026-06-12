@@ -17,6 +17,10 @@ export interface MediaTitle {
   originalTitle: string;
   year: number;
   aliases: string[];
+  /** Scraped artwork/metadata — durable product state, read straight from the DB. */
+  posterPath?: string | null;
+  backdropPath?: string | null;
+  overview?: string;
 }
 
 export interface TrackedSeason {

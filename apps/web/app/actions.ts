@@ -111,3 +111,42 @@ export async function importForeignWorkAction(input: {
     return { status: "failed", message: `入库失败：${String(error)}` };
   }
 }
+
+export async function requestSeasonAction(input: {
+  tmdbId: number;
+  seasonNumber: number;
+}): Promise<RequestTrackingActionResult> {
+  const { queueSeasonTracking } = await import("../lib/title-hub");
+  const request = await queueSeasonTracking(input.tmdbId, input.seasonNumber);
+  if (request.status === "already_tracked") {
+    return { status: "already_tracked", message: "本季已追踪。" };
+  }
+  if (request.status === "already_running") {
+    return { status: "active_workflow", message: "本季获取任务已在运行中。" };
+  }
+  if (request.status === "unsupported") {
+    return { status: "unsupported", message: request.message };
+  }
+  revalidatePath(`/show/${input.tmdbId}`);
+  revalidatePath("/");
+  return { status: "requested", message: `第 ${input.seasonNumber} 季已加入后台队列。` };
+}
+
+export async function requestRemainingAction(input: {
+  tmdbId: number;
+}): Promise<RequestTrackingActionResult> {
+  const { queueRemainingSeasons } = await import("../lib/title-hub");
+  const request = await queueRemainingSeasons(input.tmdbId);
+  if (request.status === "already_tracked") {
+    return { status: "already_tracked", message: "所有季都已在追踪。" };
+  }
+  if (request.status === "already_running") {
+    return { status: "active_workflow", message: "获取任务已在运行中。" };
+  }
+  if (request.status === "unsupported") {
+    return { status: "unsupported", message: request.message };
+  }
+  revalidatePath(`/show/${input.tmdbId}`);
+  revalidatePath("/");
+  return { status: "requested", message: "剩余季已加入后台队列。" };
+}

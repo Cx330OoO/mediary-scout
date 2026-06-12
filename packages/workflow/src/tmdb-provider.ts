@@ -46,6 +46,9 @@ interface TmdbTvDetails {
   original_name: string;
   first_air_date: string;
   number_of_episodes: number;
+  overview: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
   last_episode_to_air?: {
     season_number?: number;
     episode_number?: number;
@@ -212,6 +215,9 @@ export async function prepareTrackingTarget(input: TvTrackingTargetInput): Promi
       originalTitle: normalizeTitle(details.original_name) || title,
       year: yearFromDate(details.first_air_date),
       aliases: aliasList(title, details.original_name),
+      posterPath: details.poster_path,
+      backdropPath: details.backdrop_path,
+      overview: details.overview,
     },
     season: {
       id: `${titleId}_s${input.seasonNumber}`,
@@ -280,6 +286,9 @@ export async function prepareSeriesTarget(input: {
       originalTitle: normalizeTitle(details.original_name) || title,
       year: yearFromDate(details.first_air_date),
       aliases: aliasList(title, details.original_name),
+      posterPath: details.poster_path,
+      backdropPath: details.backdrop_path,
+      overview: details.overview,
     },
     seasons,
     keyword: `${title} ${input.qualityPreference}`.trim(),
@@ -307,6 +316,9 @@ function parseTvDetails(value: unknown): TmdbTvDetails {
     original_name: stringValue(value["original_name"]),
     first_air_date: stringValue(value["first_air_date"]),
     number_of_episodes: numberValue(value["number_of_episodes"]),
+    overview: stringValue(value["overview"]),
+    poster_path: optionalStringOrNull(value["poster_path"]),
+    backdrop_path: optionalStringOrNull(value["backdrop_path"]),
     last_episode_to_air: isRecord(value["last_episode_to_air"])
       ? optionalEpisodePointer(value["last_episode_to_air"])
       : null,

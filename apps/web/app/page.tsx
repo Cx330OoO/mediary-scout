@@ -1,36 +1,13 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import {
-  Bell,
-  CheckCircle2,
-  Clock3,
-  DownloadCloud,
-  FolderOpen,
-  Search,
-  ShieldCheck,
-  TriangleAlert,
-} from "lucide-react";
+import { CheckCircle2, Clock3, Library, Search, TriangleAlert } from "lucide-react";
 import { AppSidebar } from "../components/app-sidebar";
 import { RequestSeriesButton } from "../components/request-series-button";
 import { RequestTrackButton } from "../components/request-track-button";
-import { getLibraryDashboard, getSearchView } from "../lib/search-page";
+import { getSearchView } from "../lib/search-page";
+import { getLibraryWall, type LibraryWallEntry } from "../lib/title-hub";
+import { ensureDemoSeeded, getWorkflowRepository } from "../lib/workflow-runtime";
 import type { SearchCandidateCard } from "@media-track/workflow";
-
-const displayLabels = {
-  obtained: "已获取",
-  provider_ahead: "超前",
-  missing_aired: "缺集",
-  unaired: "未播",
-  unknown: "未知",
-} as const;
-
-const episodeTone = {
-  obtained: "episode-cell obtained",
-  provider_ahead: "episode-cell provider-ahead",
-  missing_aired: "episode-cell missing-aired",
-  unaired: "episode-cell unaired",
-  unknown: "episode-cell unknown",
-} as const;
 
 export default async function Page({
   searchParams,
@@ -71,6 +48,16 @@ export default async function Page({
 
 async function SearchSurface({ query }: { query: string }) {
   const searchView = await getSearchView(query);
+  // Library awareness on results: a tracked title shows its state and routes
+  // to the same title page as the library — search must anticipate re-searching
+  // something already obtained.
+  const repository = getWorkflowRepository();
+  await ensureDemoSeeded(repository);
+  const trackedTmdbIds = new Set(
+    (await repository.listTrackedSeasonStates())
+      .filter((state) => state.title.type === "tv")
+      .map((state) => state.title.tmdbId),
+  );
 
   return (
     <section className="search-surface">
@@ -112,7 +99,11 @@ async function SearchSurface({ query }: { query: string }) {
           {searchView.candidates.length > 0 ? (
             <div className="candidate-grid">
               {searchView.candidates.map((candidate) => (
-                <CandidateCard candidate={candidate} key={candidate.id} />
+                <CandidateCard
+                  candidate={candidate}
+                  tracked={trackedTmdbIds.has(candidate.tmdbId)}
+                  key={`${candidate.mediaType}_${candidate.tmdbId}`}
+                />
               ))}
             </div>
           ) : (
@@ -128,32 +119,52 @@ async function SearchSurface({ query }: { query: string }) {
   );
 }
 
-function CandidateCard({ candidate }: { candidate: SearchCandidateCard }) {
+function CandidateCard({
+  candidate,
+  tracked,
+}: {
+  candidate: SearchCandidateCard;
+  tracked: boolean;
+}) {
   return (
     <article className="candidate-card">
-      <div className="candidate-poster" aria-hidden>
-        <span>{candidate.title.slice(0, 4)}</span>
-      </div>
+      <Link className="candidate-poster" href={`/show/${candidate.tmdbId}`} aria-hidden tabIndex={-1}>
+        {candidate.posterPath ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={`https://image.tmdb.org/t/p/w342${candidate.posterPath}`} alt="" loading="lazy" />
+        ) : (
+          <span>{candidate.title.slice(0, 4)}</span>
+        )}
+      </Link>
       <div className="candidate-body">
         <div className="candidate-title-row">
           <div>
             <h3>
-              <Link href={`/show/${candidate.tmdbId}/${candidate.selectedSeasonNumber ?? 1}`}>
-                {candidate.title}
-              </Link>
+              <Link href={`/show/${candidate.tmdbId}`}>{candidate.title}</Link>
             </h3>
             <p>
-              {candidate.year} · {candidate.mediaType === "tv" ? `第 ${candidate.selectedSeasonNumber} 季` : "电影"}
+              {candidate.year} · {candidate.mediaType === "tv" ? "剧集" : "电影"}
+              {tracked ? <span className="hub-badge tone-green card-badge">已在库</span> : null}
             </p>
           </div>
           <div className="candidate-actions">
-            <RequestTrackButton
-              candidateId={candidate.id}
-              actionState={candidate.action.state}
-              disabled={candidate.action.disabled}
-              label={candidate.action.label}
-            />
-            {candidate.mediaType === "tv" ? <RequestSeriesButton candidateId={candidate.id} /> : null}
+            {tracked ? (
+              <Link className="primary-button" href={`/show/${candidate.tmdbId}`}>
+                查看 / 获取更多
+              </Link>
+            ) : (
+              <>
+                <RequestTrackButton
+                  candidateId={candidate.id}
+                  actionState={candidate.action.state}
+                  disabled={candidate.action.disabled}
+                  label={candidate.action.label}
+                />
+                {candidate.mediaType === "tv" ? (
+                  <RequestSeriesButton candidateId={candidate.id} />
+                ) : null}
+              </>
+            )}
           </div>
         </div>
         <p className="candidate-overview">{candidate.overview}</p>
@@ -168,203 +179,66 @@ function CandidateCard({ candidate }: { candidate: SearchCandidateCard }) {
 }
 
 async function LibrarySurface() {
-  const dashboard = await getLibraryDashboard();
-  const tracked = dashboard.trackedSeason;
-  const seasonCode = `S${String(tracked.seasonNumber).padStart(2, "0")}`;
-  const obtainedPercent = Math.round((tracked.obtainedCount / tracked.totalEpisodes) * 100);
-  const airedPercent = Math.round((tracked.latestAiredEpisode / tracked.totalEpisodes) * 100);
-  const missingEpisodes = tracked.episodes
-    .filter((episode) => episode.displayState === "missing_aired")
-    .map((episode) => episodeLabel(episode.episodeCode, seasonCode));
-  const unavailableCount = tracked.totalEpisodes - tracked.latestAiredEpisode;
+  const wall = await getLibraryWall();
 
-  const totalSeasonCount = dashboard.libraryTitles.reduce(
-    (sum, entry) => sum + entry.seasons.length,
-    0,
-  );
+  if (wall.length === 0) {
+    return (
+      <section className="library-surface">
+        <div className="quiet-state">
+          <Library size={24} aria-hidden />
+          <strong>媒体库还是空的</strong>
+          <span>去搜索页发起第一次获取吧。</span>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="library-surface">
       <div className="section-heading library-heading">
         <div>
           <h1>我的媒体库</h1>
-          <p>
-            {dashboard.libraryTitles.length} 部剧 · {totalSeasonCount} 个追踪季
-          </p>
+          <p>{wall.length} 部剧正在自动追踪</p>
         </div>
       </div>
-
-      <section className="overview-grid" aria-label={`${tracked.title} 工作台`}>
-        <article className="title-stage">
-          <div className="poster-tile" aria-hidden>
-            <span>{tracked.title}</span>
-            <small>S{String(tracked.seasonNumber).padStart(2, "0")}</small>
-          </div>
-
-          <div className="stage-content">
-            <div className="stage-kicker">
-              <span className="live-dot" />
-              正在追踪
-            </div>
-            <h2>
-              {tracked.title} 第 {tracked.seasonNumber} 季
-            </h2>
-            <div className="stage-meta">
-              <span>4K</span>
-              <span>TMDB 已播 {tracked.latestAiredEpisode}</span>
-              <span>总集数 {tracked.totalEpisodes}</span>
-            </div>
-
-            <div className="season-progress" aria-label={`已获取 ${obtainedPercent}%`}>
-              <div className="progress-track">
-                <span className="aired-track" style={{ width: `${airedPercent}%` }} />
-                <span className="obtained-track" style={{ width: `${obtainedPercent}%` }} />
-              </div>
-              <div className="progress-copy">
-                <span>{tracked.obtainedCount} 集可看</span>
-                <span>{missingEpisodes.length ? `${missingEpisodes.join("、")} 缺失` : "无缺集"}</span>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <div className="metric-strip">
-          <MetricTile icon={CheckCircle2} label="已获取" value={tracked.obtainedCount} tone="green" />
-          <MetricTile icon={TriangleAlert} label="已播缺集" value={tracked.missingAiredCount} tone="coral" />
-          <MetricTile icon={Clock3} label="未播出" value={unavailableCount} tone="amber" />
-          <MetricTile icon={DownloadCloud} label="资源超前" value={tracked.providerAheadEpisodes.length} tone="blue" />
-        </div>
-      </section>
-
-      <section className="dashboard-grid">
-        <article className="panel episode-panel">
-          <div className="panel-header">
-            <div>
-              <h2 className="panel-title">集数状态</h2>
-              <p className="panel-note">
-                {seasonCode}E01 至 {seasonCode}E{String(tracked.totalEpisodes).padStart(2, "0")}
-              </p>
-            </div>
-            <div className="legend-row" aria-label="状态图例">
-              <span className="legend-item obtained">已获取</span>
-              <span className="legend-item missing">缺集</span>
-              <span className="legend-item unaired">未播</span>
-            </div>
-          </div>
-
-          <div className="episode-grid" aria-label={`${tracked.title} episode status`}>
-            {tracked.episodes.map((episode) => (
-              <div className={episodeTone[episode.displayState]} key={episode.episodeCode}>
-                <strong>{episodeLabel(episode.episodeCode, seasonCode)}</strong>
-                <span>{displayLabels[episode.displayState]}</span>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <aside className="side-stack">
-          <section className="panel notice-panel">
-            <div className="panel-header">
-              <div>
-                <h2 className="panel-title">通知</h2>
-                <p className="panel-note">最近的工作流结果</p>
-              </div>
-              <Bell size={18} aria-hidden />
-            </div>
-            <ul className="event-list">
-              {dashboard.events.map((event, index) => (
-                <li className="event-item" key={event.title}>
-                  <span className={`event-icon tone-${index}`}>
-                    {index === 1 ? (
-                      <TriangleAlert size={15} aria-hidden />
-                    ) : index === 2 ? (
-                      <ShieldCheck size={15} aria-hidden />
-                    ) : (
-                      <CheckCircle2 size={15} aria-hidden />
-                    )}
-                  </span>
-                  <span>
-                    <span className="event-title">{event.title}</span>
-                    <span className="event-body">{event.body}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="panel ops-panel">
-            <div className="panel-header">
-              <div>
-                <h2 className="panel-title">目标目录</h2>
-                <p className="panel-note">Season {String(tracked.seasonNumber).padStart(2, "0")}</p>
-              </div>
-              <FolderOpen size={18} aria-hidden />
-            </div>
-            <div className="ops-body">
-              <div className="ops-line">
-                <span className="ops-icon">
-                  <FolderOpen size={16} aria-hidden />
-                </span>
-                <span>
-                  <strong>{tracked.title}/Season {String(tracked.seasonNumber).padStart(2, "0")}</strong>
-                  <small>统一 staging 归一化后按季落位</small>
-                </span>
-              </div>
-            </div>
-          </section>
-        </aside>
-      </section>
-
-      <section className="library-titles" aria-label="全部追踪">
-        <div className="section-heading">
-          <div>
-            <h2>全部追踪</h2>
-            <p>每季独立监控，点击查看集数详情</p>
-          </div>
-        </div>
-        <div className="title-card-grid">
-          {dashboard.libraryTitles.map((entry) => (
-            <article className="library-title-card" key={entry.titleId}>
-              <div className="library-title-head">
-                <h3>{entry.title}</h3>
-                <span>{entry.year}</span>
-              </div>
-              <ul className="season-rows">
-                {entry.seasons.map((seasonEntry) => {
-                  const percent =
-                    seasonEntry.totalEpisodes > 0
-                      ? Math.round((seasonEntry.obtainedCount / seasonEntry.totalEpisodes) * 100)
-                      : 0;
-                  return (
-                    <li key={seasonEntry.trackedSeasonId}>
-                      <Link
-                        className="season-row"
-                        href={`/show/${entry.tmdbId}/${seasonEntry.seasonNumber}`}
-                      >
-                        <span className="season-row-name">第 {seasonEntry.seasonNumber} 季</span>
-                        <span className={`season-chip ${seasonEntry.status}`}>
-                          {seasonEntry.status === "active"
-                            ? "追更中"
-                            : seasonEntry.status === "completed"
-                              ? "已完结"
-                              : seasonEntry.status}
-                        </span>
-                        <span className="season-row-progress" aria-hidden>
-                          <span style={{ width: `${percent}%` }} />
-                        </span>
-                        <span className="season-row-count">
-                          {seasonEntry.obtainedCount}/{seasonEntry.totalEpisodes}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </article>
-          ))}
-        </div>
-      </section>
+      <div className="poster-wall">
+        {wall.map((entry) => (
+          <PosterCard entry={entry} key={entry.tmdbId} />
+        ))}
+      </div>
     </section>
+  );
+}
+
+function PosterCard({ entry }: { entry: LibraryWallEntry }) {
+  const stateMeta =
+    entry.state === "complete"
+      ? { tone: "green", icon: CheckCircle2, label: "已全部入库" }
+      : entry.state === "tracking"
+        ? { tone: "indigo", icon: Clock3, label: "追更中" }
+        : { tone: "amber", icon: TriangleAlert, label: "有缺集" };
+  const StateIcon = stateMeta.icon;
+
+  return (
+    <Link className="wall-card" href={`/show/${entry.tmdbId}`}>
+      <span className="wall-poster">
+        {entry.posterPath ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={`https://image.tmdb.org/t/p/w342${entry.posterPath}`} alt="" loading="lazy" />
+        ) : (
+          <span className="poster-fallback">{entry.title.slice(0, 4)}</span>
+        )}
+        <span className={`wall-state tone-${stateMeta.tone}`} title={stateMeta.label}>
+          <StateIcon size={13} aria-hidden />
+        </span>
+      </span>
+      <span className="wall-copy">
+        <strong>{entry.title}</strong>
+        <span>
+          {entry.year} · {entry.seasonCount} 季 · {entry.obtainedEpisodes}/{entry.totalAiredEpisodes} 集
+        </span>
+      </span>
+    </Link>
   );
 }
 
@@ -393,44 +267,13 @@ function LibrarySurfaceSkeleton() {
   return (
     <section className="library-surface">
       <div className="skeleton skeleton-heading" />
-      <div className="overview-grid">
-        <div className="skeleton skeleton-stage" />
-        <div className="metric-strip">
-          <div className="skeleton skeleton-metric" />
-          <div className="skeleton skeleton-metric" />
-          <div className="skeleton skeleton-metric" />
-          <div className="skeleton skeleton-metric" />
-        </div>
+      <div className="poster-wall">
+        <div className="skeleton skeleton-poster" />
+        <div className="skeleton skeleton-poster" />
+        <div className="skeleton skeleton-poster" />
+        <div className="skeleton skeleton-poster" />
       </div>
     </section>
-  );
-}
-
-function episodeLabel(episodeCode: string, seasonCode: string) {
-  return episodeCode.startsWith(seasonCode) ? episodeCode.slice(seasonCode.length) : episodeCode;
-}
-
-function MetricTile({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: typeof CheckCircle2;
-  label: string;
-  value: number;
-  tone: "green" | "coral" | "amber" | "blue";
-}) {
-  return (
-    <div className={`metric-tile tone-${tone}`}>
-      <span className="metric-icon">
-        <Icon size={18} aria-hidden />
-      </span>
-      <span>
-        <span className="metric-label">{label}</span>
-        <strong className="metric-value">{value}</strong>
-      </span>
-    </div>
   );
 }
 

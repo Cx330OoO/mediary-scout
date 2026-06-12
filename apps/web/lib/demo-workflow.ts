@@ -13,6 +13,8 @@ import {
 export interface DashboardState {
   trackedSeason: TrackedSeasonStatusView;
   events: Array<{
+    id: string;
+    kind: string;
     title: string;
     body: string;
   }>;
@@ -59,14 +61,20 @@ export function dashboardStateFromTrackedSeason(trackedSeason: TrackedSeasonStat
     trackedSeason,
     events: [
       {
+        id: "demo_event_obtained",
+        kind: "tracking_initialized",
         title: "翘楚 S01E01-S01E12 已获取",
         body: "目标目录已验证到 12 个视频文件。",
       },
       {
+        id: "demo_event_missing",
+        kind: "no_coverage",
         title: "S01E13-S01E14 等待修复",
         body: "已播出但未获取，会进入后续 Type 3 检查。",
       },
       {
+        id: "demo_event_health",
+        kind: "already_current",
         title: "115 连接有效",
         body: "最近一次最小读验证通过。",
       },
