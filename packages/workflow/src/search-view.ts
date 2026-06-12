@@ -52,6 +52,8 @@ export interface SearchCandidateCard {
   selectedSeasonNumber: number | null;
   totalEpisodes: number | null;
   latestAiredEpisode: number | null;
+  /** All known seasons of the title (tv), for per-season request entries. */
+  seasonNumbers: number[];
   action: SearchCandidateAction;
 }
 
@@ -132,6 +134,10 @@ async function toCandidateCard(
     selectedSeasonNumber: selectedSeason?.seasonNumber ?? null,
     totalEpisodes: selectedSeason?.episodeCount ?? null,
     latestAiredEpisode: selectedSeason?.latestAiredEpisode ?? null,
+    seasonNumbers:
+      candidate.mediaType === "tv"
+        ? candidate.seasons.map((season) => season.seasonNumber).sort((a, b) => a - b)
+        : [],
     action: selectedSeason
       ? await actionForTrackedSeason(repository, trackedSeasonId(candidate.tmdbId, selectedSeason.seasonNumber))
       : canRequestAction(),

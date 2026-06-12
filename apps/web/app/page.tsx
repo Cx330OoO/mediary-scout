@@ -2,12 +2,12 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { CheckCircle2, Clock3, Library, Search, TriangleAlert } from "lucide-react";
 import { AppSidebar } from "../components/app-sidebar";
-import { RequestSeriesButton } from "../components/request-series-button";
 import { RequestTrackButton } from "../components/request-track-button";
+import { SeasonRequestMenu } from "../components/season-request-menu";
 import { getSearchView } from "../lib/search-page";
 import { getLibraryWall, type LibraryWallEntry } from "../lib/title-hub";
 import { ensureDemoSeeded, getWorkflowRepository } from "../lib/workflow-runtime";
-import type { SearchCandidateCard } from "@media-track/workflow";
+import type { SearchCandidateCard, TrackedSeasonState } from "@media-track/workflow";
 
 export default async function Page({
   searchParams,
@@ -48,16 +48,20 @@ export default async function Page({
 
 async function SearchSurface({ query }: { query: string }) {
   const searchView = await getSearchView(query);
-  // Library awareness on results: a tracked title shows its state and routes
-  // to the same title page as the library — search must anticipate re-searching
-  // something already obtained.
+  // Library awareness on results: a tracked title shows WHICH seasons are
+  // obtained and routes to the same title page as the library — search must
+  // anticipate re-searching something already obtained.
   const repository = getWorkflowRepository();
   await ensureDemoSeeded(repository);
-  const trackedTmdbIds = new Set(
-    (await repository.listTrackedSeasonStates())
-      .filter((state) => state.title.type === "tv")
-      .map((state) => state.title.tmdbId),
-  );
+  const trackedByTmdbId = new Map<number, TrackedSeasonState[]>();
+  for (const state of await repository.listTrackedSeasonStates()) {
+    if (state.title.type !== "tv") {
+      continue;
+    }
+    const list = trackedByTmdbId.get(state.title.tmdbId) ?? [];
+    list.push(state);
+    trackedByTmdbId.set(state.title.tmdbId, list);
+  }
 
   return (
     <section className="search-surface">
@@ -101,7 +105,10 @@ async function SearchSurface({ query }: { query: string }) {
               {searchView.candidates.map((candidate) => (
                 <CandidateCard
                   candidate={candidate}
-                  tracked={trackedTmdbIds.has(candidate.tmdbId)}
+                  trackedLabel={trackedSummaryLabel(
+                    trackedByTmdbId.get(candidate.tmdbId) ?? [],
+                    candidate.seasonNumbers.length,
+                  )}
                   key={`${candidate.mediaType}_${candidate.tmdbId}`}
                 />
               ))}
@@ -119,13 +126,53 @@ async function SearchSurface({ query }: { query: string }) {
   );
 }
 
+/**
+ * Concrete library awareness for a result card: not just "tracked", but
+ * WHICH seasons are obtained / airing / missing.
+ */
+function trackedSummaryLabel(states: TrackedSeasonState[], totalSeasonCount: number): string | null {
+  if (states.length === 0) {
+    return null;
+  }
+  const seasonNumber = (state: TrackedSeasonState) => state.season.seasonNumber;
+  const obtainedCount = (state: TrackedSeasonState) =>
+    state.episodes.filter((episode) => episode.obtained).length;
+  const complete = states
+    .filter(
+      (state) =>
+        state.season.status === "completed" && obtainedCount(state) >= state.season.totalEpisodes,
+    )
+    .map(seasonNumber)
+    .sort((a, b) => a - b);
+  const active = states
+    .filter((state) => state.season.status === "active")
+    .map(seasonNumber)
+    .sort((a, b) => a - b);
+  if (totalSeasonCount > 0 && complete.length === totalSeasonCount) {
+    return `全 ${totalSeasonCount} 季已获取`;
+  }
+  const parts: string[] = [];
+  if (complete.length > 0) {
+    parts.push(`第 ${complete.join("、")} 季已获取`);
+  }
+  if (active.length > 0) {
+    parts.push(`第 ${active.join("、")} 季追更中`);
+  }
+  const rest = states.length - complete.length - active.length;
+  if (rest > 0) {
+    parts.push(`${rest} 季有缺集`);
+  }
+  return parts.join(" · ") || "已追踪";
+}
+
 function CandidateCard({
   candidate,
-  tracked,
+  trackedLabel,
 }: {
   candidate: SearchCandidateCard;
-  tracked: boolean;
+  trackedLabel: string | null;
 }) {
+  const isTv = candidate.mediaType === "tv";
   return (
     <article className="candidate-card">
       <Link className="candidate-poster" href={`/show/${candidate.tmdbId}`} aria-hidden tabIndex={-1}>
@@ -143,35 +190,34 @@ function CandidateCard({
               <Link href={`/show/${candidate.tmdbId}`}>{candidate.title}</Link>
             </h3>
             <p>
-              {candidate.year} · {candidate.mediaType === "tv" ? "剧集" : "电影"}
-              {tracked ? <span className="hub-badge tone-green card-badge">已在库</span> : null}
+              {candidate.year} · {isTv ? "剧集" : "电影"}
             </p>
           </div>
           <div className="candidate-actions">
-            {tracked ? (
+            {trackedLabel !== null ? (
               <Link className="primary-button" href={`/show/${candidate.tmdbId}`}>
-                查看 / 获取更多
+                查看详情
               </Link>
+            ) : isTv ? (
+              <SeasonRequestMenu tmdbId={candidate.tmdbId} seasonNumbers={candidate.seasonNumbers} />
             ) : (
-              <>
-                <RequestTrackButton
-                  candidateId={candidate.id}
-                  actionState={candidate.action.state}
-                  disabled={candidate.action.disabled}
-                  label={candidate.action.label}
-                />
-                {candidate.mediaType === "tv" ? (
-                  <RequestSeriesButton candidateId={candidate.id} />
-                ) : null}
-              </>
+              <RequestTrackButton
+                candidateId={candidate.id}
+                actionState={candidate.action.state}
+                disabled={candidate.action.disabled}
+                label={candidate.action.label}
+              />
             )}
           </div>
         </div>
         <p className="candidate-overview">{candidate.overview}</p>
         <div className="candidate-meta">
-          {candidate.totalEpisodes ? <span>{candidate.totalEpisodes} 集</span> : null}
-          {candidate.latestAiredEpisode ? <span>已播 {candidate.latestAiredEpisode}</span> : null}
-          <span>TMDB {candidate.tmdbId}</span>
+          {isTv && candidate.seasonNumbers.length > 0 ? (
+            <span>共 {candidate.seasonNumbers.length} 季</span>
+          ) : null}
+          {trackedLabel !== null ? (
+            <span className="hub-badge tone-green">{trackedLabel}</span>
+          ) : null}
         </div>
       </div>
     </article>

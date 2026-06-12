@@ -51,10 +51,10 @@ export function RequestSeasonButton({
 
 export function RequestRemainingButton({
   tmdbId,
-  remainingCount,
+  label,
 }: {
   tmdbId: number;
-  remainingCount: number;
+  label: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -63,8 +63,6 @@ export function RequestRemainingButton({
     result?.status === "requested" ||
     result?.status === "already_tracked" ||
     result?.status === "active_workflow";
-  const label =
-    remainingCount > 0 ? `获取剩余 ${remainingCount} 季` : "获取全剧";
 
   return (
     <button

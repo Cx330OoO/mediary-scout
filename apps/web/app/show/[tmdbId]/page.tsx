@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { ArrowLeft, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { AppSidebar } from "../../../components/app-sidebar";
+import { BackLink } from "../../../components/back-link";
 import {
   RequestRemainingButton,
   RequestSeasonButton,
@@ -19,16 +19,11 @@ const aggregateBadge = {
 export default function ShowPage({ params }: { params: Promise<{ tmdbId: string }> }) {
   return (
     <div className="app-shell">
-      <AppSidebar active="library" />
+      {/* A title page may be reached from search (untracked) or the library
+          (tracked) — highlight neither and let the back control use history. */}
+      <AppSidebar active="none" />
       <main className="main product-main">
-        <Link
-          className="nav-item"
-          href="/?tab=library"
-          style={{ display: "inline-flex", marginBottom: 16 }}
-        >
-          <ArrowLeft size={16} aria-hidden />
-          返回媒体库
-        </Link>
+        <BackLink />
         <Suspense fallback={<HubSkeleton />}>
           <TitleHub params={params} />
         </Suspense>
@@ -89,10 +84,15 @@ async function TitleHub({ params }: { params: Promise<{ tmdbId: string }> }) {
           </p>
           {view.overview ? <p className="hub-overview">{view.overview}</p> : null}
           <div className="hub-actions">
-            {view.untrackedSeasonNumbers.length > 0 ? (
+            {/* Single-season titles get their button on the season row. */}
+            {view.untrackedSeasonNumbers.length > 0 && view.seasons.length > 1 ? (
               <RequestRemainingButton
                 tmdbId={view.tmdbId}
-                remainingCount={view.aggregate === "untracked" ? 0 : view.untrackedSeasonNumbers.length}
+                label={
+                  view.aggregate === "untracked"
+                    ? "获取所有季"
+                    : `获取剩余 ${view.untrackedSeasonNumbers.length} 季`
+                }
               />
             ) : null}
           </div>
