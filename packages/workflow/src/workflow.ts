@@ -581,7 +581,15 @@ async function acquireMissingEpisodes(input: {
       failureEvidence,
       searchResources: async ({ keyword }) => input.resourceProvider.search({ keyword }),
     });
-    resourceSnapshots.push(...planning.snapshots);
+    // Content-hashing providers (PanSou) can return the SAME snapshot id for
+    // identical result sets across searches; persist each id once.
+    const knownSnapshotIds = new Set(resourceSnapshots.map((snapshot) => snapshot.id));
+    for (const snapshot of planning.snapshots) {
+      if (!knownSnapshotIds.has(snapshot.id)) {
+        knownSnapshotIds.add(snapshot.id);
+        resourceSnapshots.push(snapshot);
+      }
+    }
     recordPlanningAudit({ auditEvents: input.auditEvents, planning, pass });
 
     const validated = validateAcquisitionPlan({

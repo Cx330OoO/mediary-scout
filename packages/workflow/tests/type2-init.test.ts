@@ -524,3 +524,55 @@ describe("runType2Initialization canonical landing directory", () => {
     ).rejects.toThrow("MEDIA_TRACK_STORAGE_PARENT_REQUIRED");
   });
 });
+
+describe("snapshot id dedupe", () => {
+  it("keeps one copy when the provider content-hashes identical results to the same snapshot id", async () => {
+    const title: MediaTitle = {
+      id: "title_show", tmdbId: 1, type: "tv", title: "Show", originalTitle: "Show", year: 2026, aliases: [],
+    };
+    const season: TrackedSeason = {
+      id: "season_show_1", mediaTitleId: title.id, seasonNumber: 1, status: "active",
+      qualityPreference: "4K", storageDirectoryId: "dir_show_s1", totalEpisodes: 1,
+      latestAiredEpisode: 1, latestAiredSource: "metadata",
+    };
+    const hashedSnapshot = (id: string) => ({
+      id, provider: "pansou", keyword: "Show", candidates: [{
+        id: `${id}_candidate_1`, snapshotId: id, index: 0, title: "Show S01E01 4K",
+        type: "115" as const, source: "pansou", episodeHints: ["S01E01"], qualityHints: [], providerPayload: {},
+      }], createdAt: "2026-01-01T00:00:00.000Z",
+    });
+    const agents = new (class extends FakeAgentNodes {
+      override async planAcquisition(input: AcquisitionPlanningInput): Promise<AcquisitionPlanningResult> {
+        // model searched twice; provider content-hashed both to the same id
+        const snapshot = hashedSnapshot("pansou_samehash");
+        void input;
+        return {
+          plan: {
+            node: "stub", selectedSnapshotId: snapshot.id, searchedKeywords: ["Show", "Show 4K"],
+            candidateDispositions: [{ candidateId: `${snapshot.id}_candidate_1`, disposition: "selected", episodes: ["S01E01"], reason: "covers" }],
+            confidence: "high", reason: "ok",
+          },
+          snapshots: [snapshot, hashedSnapshot("pansou_samehash")],
+          trace: [],
+        };
+      }
+    })();
+    const storage = new FakeStorageExecutor({
+      transferOutcomes: {
+        pansou_samehash_candidate_1: {
+          status: "succeeded", providerMessage: "",
+          files: [{ id: "f1", storageDirectoryId: "x", name: "Show.S01E01.mkv", sizeBytes: 1, episodeCode: "S01E01", providerFileId: "f1" }],
+        },
+      },
+    });
+
+    const result = await runType2Initialization({
+      title, season, keyword: "Show 4K",
+      storageParentDirectoryId: "library_root",
+      resourceProvider: new FakeResourceProvider({ keywordResults: {} }),
+      storage, agents,
+    });
+
+    expect(result.resourceSnapshots.map((snapshot) => snapshot.id)).toEqual(["pansou_samehash"]);
+  });
+});
