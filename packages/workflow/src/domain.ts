@@ -4,7 +4,7 @@ export type LatestAiredSource = "metadata" | "manual" | "unknown";
 export type AirStatus = "aired" | "unaired" | "unknown";
 export type MetadataStatus = "confirmed" | "provider_ahead" | "storage_only";
 export type WorkflowKind = "type2_init" | "type3_monitor";
-export type WorkflowStatus = "queued" | "running" | "succeeded" | "failed" | "partial";
+export type WorkflowStatus = "queued" | "running" | "succeeded" | "failed" | "partial" | "no_coverage";
 export type ResourceType = "115" | "magnet" | "manual";
 export type TransferStatus = "succeeded" | "failed" | "no_target_change";
 export type Confidence = "low" | "medium" | "high";
@@ -108,6 +108,34 @@ export interface ResourceDiscoveryDecision {
   reason: string;
 }
 
+export type CandidateDispositionKind = "selected" | "rejected" | "uncertain";
+
+export interface CandidateDisposition {
+  candidateId: string;
+  disposition: CandidateDispositionKind;
+  /** Episode codes this candidate covers; required non-empty for "selected". */
+  episodes: string[];
+  reason: string;
+}
+
+export interface AcquisitionPlan {
+  node: string;
+  /** Snapshot id observed in this planning run, or null when nothing covers the need. */
+  selectedSnapshotId: string | null;
+  searchedKeywords: string[];
+  candidateDispositions: CandidateDisposition[];
+  confidence: Confidence;
+  reason: string;
+}
+
+export interface AcquisitionFailureEvidence {
+  candidateId: string;
+  candidateTitle: string;
+  transferStatus: TransferStatus;
+  providerMessage: string;
+  episodesStillMissing: string[];
+}
+
 export interface TransferAttempt {
   id: string;
   workflowRunId: string;
@@ -147,7 +175,7 @@ export function episodeNumberFromCode(code: string): number {
   return Number(match[1]);
 }
 
-function episodePartsFromCode(code: string): { seasonNumber: number; episodeNumber: number } {
+export function episodePartsFromCode(code: string): { seasonNumber: number; episodeNumber: number } {
   const match = /^S(\d{2,})E(\d{2,})$/.exec(code);
   if (!match) {
     throw new Error(`Invalid episode code: ${code}`);
