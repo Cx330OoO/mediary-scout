@@ -1,11 +1,13 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { Bell, Cable, Languages, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Bell, Cable, CalendarClock, Languages, ShieldCheck, TriangleAlert } from "lucide-react";
 import { AppSidebar } from "../../components/app-sidebar";
 import { Pan115QrConnect } from "../../components/pan115-qr-connect";
 import { PushNotificationForm } from "../../components/push-notification-form";
 import { PreferredLanguageForm } from "../../components/preferred-language-form";
+import { DailySweepForm } from "../../components/daily-sweep-form";
 import {
+  getDailySweepTime,
   getPan115ConnectionStatus,
   getWorkflowRepository,
   PREFERRED_LANGUAGE_SETTING_KEY,
@@ -27,6 +29,9 @@ export default function SettingsPage() {
         </Suspense>
         <Suspense fallback={<div className="skeleton skeleton-heading" />}>
           <PreferredLanguageSection />
+        </Suspense>
+        <Suspense fallback={<div className="skeleton skeleton-heading" />}>
+          <DailySweepSection />
         </Suspense>
         <Suspense fallback={<div className="skeleton skeleton-heading" />}>
           <PushNotificationSection />
@@ -100,6 +105,27 @@ async function Pan115Section() {
   );
 }
 
+async function DailySweepSection() {
+  await connection();
+  const repository = getWorkflowRepository();
+  const initial = await getDailySweepTime(repository);
+
+  return (
+    <section className="panel" style={{ maxWidth: 720, marginTop: 24 }}>
+      <div className="panel-header">
+        <div>
+          <h2 className="panel-title">
+            <CalendarClock size={16} aria-hidden style={{ verticalAlign: "-2px", marginRight: 8 }} />
+            每日定时巡检
+          </h2>
+          <p className="panel-note">每天定时自动追更：检查已追踪剧集，获取新播出或仍缺失的集数</p>
+        </div>
+      </div>
+      <DailySweepForm initial={initial} />
+    </section>
+  );
+}
+
 async function PushNotificationSection() {
   await connection();
   const repository = getWorkflowRepository();
@@ -120,7 +146,7 @@ async function PushNotificationSection() {
             <Bell size={16} aria-hidden style={{ verticalAlign: "-2px", marginRight: 8 }} />
             推送通知
           </h2>
-          <p className="panel-note">配置推送渠道后，Type 3 巡检完成时会自动推送更新播报</p>
+          <p className="panel-note">配置推送渠道后，每日定时巡检完成时会自动推送更新播报</p>
         </div>
       </div>
 

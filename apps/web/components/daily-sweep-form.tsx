@@ -2,23 +2,20 @@
 
 import { useState, useTransition } from "react";
 import { Check, LoaderCircle } from "lucide-react";
-import { savePreferredLanguageAction } from "../app/actions";
+import { saveDailySweepTimeAction } from "../app/actions";
 
-const LANGUAGES = [
-  { key: "中文", label: "中文（默认）" },
-  { key: "English", label: "English" },
-  { key: "日本語", label: "日本語" },
-  { key: "any", label: "不限（最大化覆盖）" },
-] as const;
-
-export function PreferredLanguageForm({ initial }: { initial: string }) {
+/**
+ * Configure the time-of-day (Beijing) the daily 巡检 sweep runs. The self-hosted
+ * scheduler reads this setting and fires the sweep at the chosen time.
+ */
+export function DailySweepForm({ initial }: { initial: string }) {
   const [isPending, startTransition] = useTransition();
-  const [value, setValue] = useState(initial || "中文");
+  const [value, setValue] = useState(initial);
   const [result, setResult] = useState<string | null>(null);
 
   const handleSave = () => {
     startTransition(async () => {
-      const res = await savePreferredLanguageAction(value);
+      const res = await saveDailySweepTimeAction(value);
       setResult(res.success ? "✅ 保存成功" : `❌ ${res.message}`);
       setTimeout(() => setResult(null), 3000);
     });
@@ -27,21 +24,16 @@ export function PreferredLanguageForm({ initial }: { initial: string }) {
   return (
     <div className="push-form">
       <p className="panel-note" style={{ marginBottom: 12 }}>
-        资源用什么语言起名，就更可能带那个语言的字幕。设置后会作为上下文传给 AI，让它优先搜你能看的语言的资源。
+        每天到这个时间（北京时间），系统会自动巡检所有追踪中的剧集，获取新播出或仍缺失的集数。
       </p>
       <div className="setting-row">
-        <select
+        <input
+          type="time"
+          className="setting-control"
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          className="setting-control"
-          aria-label="偏好语言"
-        >
-          {LANGUAGES.map((lang) => (
-            <option key={lang.key} value={lang.key}>
-              {lang.label}
-            </option>
-          ))}
-        </select>
+          aria-label="每日巡检时间"
+        />
         <button type="button" className="primary-button" onClick={handleSave} disabled={isPending}>
           {isPending ? <LoaderCircle size={14} className="spin" aria-hidden /> : <Check size={14} aria-hidden />}
           保存

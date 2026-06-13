@@ -109,7 +109,12 @@ export function Pan115QrConnect() {
       <div className="qr-connect-controls">
         <label className="qr-app-select">
           客户端类型
-          <select value={app} onChange={(event) => setApp(event.target.value)} disabled={phase === "confirming"}>
+          <select
+            className="setting-control"
+            value={app}
+            onChange={(event) => setApp(event.target.value)}
+            disabled={phase === "confirming"}
+          >
             {APP_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}

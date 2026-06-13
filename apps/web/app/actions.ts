@@ -200,6 +200,23 @@ export async function clearPushChannelAction(key: string): Promise<PushSettingsA
   }
 }
 
+export async function saveDailySweepTimeAction(time: string): Promise<PushSettingsActionResult> {
+  if (!/^\d{2}:\d{2}$/.test(time)) {
+    return { success: false, message: "时间格式应为 HH:MM" };
+  }
+  const [hours, minutes] = time.split(":").map(Number);
+  if (hours! > 23 || minutes! > 59) {
+    return { success: false, message: "时间超出范围" };
+  }
+  try {
+    const { getWorkflowRepository, DAILY_SWEEP_TIME_SETTING_KEY } = await import("../lib/workflow-runtime");
+    await getWorkflowRepository().setSetting(DAILY_SWEEP_TIME_SETTING_KEY, time);
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: `保存失败：${String(error)}` };
+  }
+}
+
 export async function savePreferredLanguageAction(
   language: string,
 ): Promise<PushSettingsActionResult> {

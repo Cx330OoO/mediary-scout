@@ -205,6 +205,19 @@ export async function getPreferredLanguage(
 
 export const PREFERRED_LANGUAGE_SETTING_KEY = "preferred_language";
 
+export const DAILY_SWEEP_TIME_SETTING_KEY = "daily_sweep_time";
+/** Default daily 巡检 time (Beijing) when the user hasn't configured one. */
+export const DEFAULT_DAILY_SWEEP_TIME = "06:00";
+
+/** The configured daily-sweep time as "HH:MM" (Beijing), or the 06:00 default
+ *  when unset/malformed. The self-hosted scheduler fires run-type3 at this time. */
+export async function getDailySweepTime(
+  repository: { getSetting(key: string): Promise<string | null> },
+): Promise<string> {
+  const value = (await repository.getSetting(DAILY_SWEEP_TIME_SETTING_KEY))?.trim();
+  return value && /^\d{2}:\d{2}$/.test(value) ? value : DEFAULT_DAILY_SWEEP_TIME;
+}
+
 function parseMovieCandidateId(candidateId: string): number | null {
   const match = /^tmdb_movie_(\d+)$/.exec(candidateId);
   return match ? Number(match[1]) : null;

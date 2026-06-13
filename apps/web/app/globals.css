@@ -1889,20 +1889,59 @@ li.hub-season-row.untracked {
   color: var(--text-muted);
 }
 
-.qr-app-select select {
-  background: var(--bg-card);
-  color: var(--text);
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  font-size: 13px;
-  padding: 9px 14px;
-}
+/* The select itself uses the shared .setting-control look (see below). */
 
 .qr-hint {
   margin: 0;
   font-size: 12.5px;
   color: var(--text-muted);
   line-height: 1.6;
+}
+
+/* ---------- shared settings controls (select / time + button on one row) ---------- */
+.setting-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.setting-row > .setting-control {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.setting-row > .primary-button {
+  flex-shrink: 0;
+}
+
+/* Unified select / time control — same 44px box as .primary-button, with a
+   roomy custom chevron so the marker isn't crammed against the edge. */
+.setting-control {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 44px;
+  background-color: var(--bg-card);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-pill);
+  font-size: 13.5px;
+  font-family: inherit;
+  padding: 0 18px;
+  transition: border-color 0.15s ease;
+}
+
+.setting-control:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+select.setting-control {
+  cursor: pointer;
+  padding-right: 42px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a8a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
 }
 
 .qr-frame {
