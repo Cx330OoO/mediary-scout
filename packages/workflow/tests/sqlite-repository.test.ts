@@ -369,6 +369,32 @@ describe("SQLiteWorkflowRepository", () => {
     });
   });
 
+  it("skips orphaned active runs whose tracked season is gone instead of throwing", async () => {
+    database = new DatabaseSync(":memory:");
+    const repository = new SQLiteWorkflowRepository(database);
+    await repository.saveWorkflowRunSnapshot(
+      workflowPersistenceFixture({
+        workflowRun: {
+          ...workflowPersistenceFixture().workflowRun,
+          id: "run_orphan",
+          status: "running",
+          finishedAt: null,
+        },
+        resourceSnapshots: [],
+        decisions: [],
+        transferAttempts: [],
+        notifications: [],
+      }),
+    );
+    // Inconsistent state: the run's tracked season was removed out from under it.
+    database.exec("PRAGMA foreign_keys = OFF");
+    database.prepare("DELETE FROM tracked_seasons WHERE id = ?").run("season_1");
+    database.exec("PRAGMA foreign_keys = ON");
+
+    // Must not throw — a broken run can't be allowed to crash the library page.
+    await expect(repository.listActiveWorkflowRuns()).resolves.toEqual([]);
+  });
+
   it("blocks a second acquisition for the same title under the title lock, across season and kind", async () => {
     database = new DatabaseSync(":memory:");
     const repository = new SQLiteWorkflowRepository(database);

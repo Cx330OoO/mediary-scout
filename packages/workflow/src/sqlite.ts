@@ -291,9 +291,15 @@ export class SQLiteWorkflowRepository implements WorkflowRepository {
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
     const snapshots: PersistedWorkflowRunSnapshot[] = [];
     for (const run of runs) {
-      const snapshot = await this.getWorkflowRunSnapshot(run.id);
-      if (snapshot) {
-        snapshots.push(snapshot);
+      try {
+        const snapshot = await this.getWorkflowRunSnapshot(run.id);
+        if (snapshot) {
+          snapshots.push(snapshot);
+        }
+      } catch {
+        // Orphaned/inconsistent run (e.g. its tracked season was deleted out
+        // from under it) — skip it rather than crash callers like the library's
+        // in-progress list.
       }
     }
     return snapshots;

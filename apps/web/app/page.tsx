@@ -10,7 +10,6 @@ import { getSearchView } from "../lib/search-page";
 import {
   getInProgressTitles,
   getLibraryWall,
-  getLibraryTypeCounts,
   type InProgressTitle,
   type LibraryWallEntry,
 } from "../lib/title-hub";
@@ -268,14 +267,14 @@ async function LibrarySurface({ mediaType, filter }: { mediaType: string; filter
     );
   }
 
-  const typeCounts = getLibraryTypeCounts(wall);
-
-  // Homepage: show all categories with horizontal rows
+  // Homepage: every type as a horizontal row, with in-progress titles shown
+  // inline (as 获取中 cards) alongside the landed ones — plus the dedicated
+  // 获取中 row at the very top.
   if (mediaType === "all") {
-    const movieWall = wall.filter((entry) => entry.type === "movie");
-    const tvWall = wall.filter((entry) => entry.type === "tv");
-    const animeWall = wall.filter((entry) => entry.type === "anime");
-
+    const byType = (type: "movie" | "tv" | "anime") => ({
+      inProgressTitles: inProgress.filter((title) => title.type === type),
+      wallEntries: wall.filter((entry) => entry.type === type),
+    });
     return (
       <section className="library-surface">
         <div className="section-heading library-heading">
@@ -287,47 +286,9 @@ async function LibrarySurface({ mediaType, filter }: { mediaType: string; filter
         {inProgress.length > 0 ? <AcquiringPoller /> : null}
         <InProgressRow titles={inProgress} />
 
-        {typeCounts.movie > 0 && (
-          <div className="category-section">
-            <Link className="category-header" href="/?tab=library&type=movie&filter=all">
-              <h2>电影 {typeCounts.movie}</h2>
-              <span className="category-arrow">›</span>
-            </Link>
-            <div className="poster-row">
-              {movieWall.map((entry) => (
-                <PosterCard entry={entry} key={entry.tmdbId} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {typeCounts.tv > 0 && (
-          <div className="category-section">
-            <Link className="category-header" href="/?tab=library&type=tv&filter=all">
-              <h2>电视剧 {typeCounts.tv}</h2>
-              <span className="category-arrow">›</span>
-            </Link>
-            <div className="poster-row">
-              {tvWall.map((entry) => (
-                <PosterCard entry={entry} key={entry.tmdbId} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {typeCounts.anime > 0 && (
-          <div className="category-section">
-            <Link className="category-header" href="/?tab=library&type=anime&filter=all">
-              <h2>动漫 {typeCounts.anime}</h2>
-              <span className="category-arrow">›</span>
-            </Link>
-            <div className="poster-row">
-              {animeWall.map((entry) => (
-                <PosterCard entry={entry} key={entry.tmdbId} />
-              ))}
-            </div>
-          </div>
-        )}
+        <CategoryRow label="电影" type="movie" {...byType("movie")} />
+        <CategoryRow label="电视剧" type="tv" {...byType("tv")} />
+        <CategoryRow label="动漫" type="anime" {...byType("anime")} />
       </section>
     );
   }
@@ -400,6 +361,41 @@ async function LibrarySurface({ mediaType, filter }: { mediaType: string; filter
         ))}
       </div>
     </section>
+  );
+}
+
+function CategoryRow({
+  label,
+  type,
+  inProgressTitles,
+  wallEntries,
+}: {
+  label: string;
+  type: string;
+  inProgressTitles: InProgressTitle[];
+  wallEntries: LibraryWallEntry[];
+}) {
+  const count = inProgressTitles.length + wallEntries.length;
+  if (count === 0) {
+    return null;
+  }
+  return (
+    <div className="category-section">
+      <Link className="category-header" href={`/?tab=library&type=${type}&filter=all`}>
+        <h2>
+          {label} {count}
+        </h2>
+        <span className="category-arrow">›</span>
+      </Link>
+      <div className="poster-row">
+        {inProgressTitles.map((title) => (
+          <InProgressCard title={title} key={`ip_${title.tmdbId}`} />
+        ))}
+        {wallEntries.map((entry) => (
+          <PosterCard entry={entry} key={entry.tmdbId} />
+        ))}
+      </div>
+    </div>
   );
 }
 
