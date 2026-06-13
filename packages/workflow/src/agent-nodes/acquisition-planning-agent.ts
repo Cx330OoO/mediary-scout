@@ -49,9 +49,11 @@ export const MOVIE_PLANNING_AGENT_SPEC = {
   system: `${SHARED_AGENT_NODE_BOUNDARY}
 You are choosing ONE resource that is exactly the target movie. There are no seasons or episodes — a movie is a single video file.
 
-Search strategy:
-- Start from initialKeyword, then try alternates when results are missing, empty, or noisy: aliases, original titles, traditional/simplified variants, quality suffixes like "4K".
-- A provider error or empty result for one keyword is evidence, not the end. searchResources returns {keyword, error} on failure; read it and adapt.
+Search strategy (searching MULTIPLE varied keywords is YOUR job — the workflow does not do it for you):
+- The initialKeyword is only a starting point (the bare title). You MUST issue several searches with different keywords to maximize coverage; never settle for a single search.
+- At minimum try, as needed: the bare title ("奥本海默"); title + year to disambiguate remakes/同名作品 ("奥本海默 2023"); title + quality variants ("奥本海默 4K", "奥本海默 1080p"); the original/foreign title; traditional/simplified variants.
+- Quality is a PREFERENCE, not a filter. Prefer the requested qualityPreference / 4K / 1080p, but a correct single-file match at a lower quality beats no match. Never let a quality suffix shrink your search to zero — drop it and search the bare title.
+- A provider error or empty result for one keyword is evidence, not the end. searchResources returns {keyword, error} on failure; read it and pick a different keyword.
 - Judge only ids observed in this run; do not assume provider ordering is stable.
 
 Judgment rules (apply simultaneously over the full candidate evidence):

@@ -212,7 +212,7 @@ async function movieTargetFromTmdbId(
     backdropPath: candidate.backdropPath,
     overview: candidate.overview,
   };
-  return { title, keyword: `${candidate.title} ${defaultQuality()}`.trim() };
+  return { title, keyword: candidate.title };
 }
 
 /**

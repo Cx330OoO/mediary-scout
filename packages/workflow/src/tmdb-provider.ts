@@ -293,7 +293,10 @@ export async function prepareMovieTarget(input: {
       backdropPath: details.backdrop_path,
       overview: details.overview,
     },
-    keyword: `${title} ${input.qualityPreference}`.trim(),
+    // Bare title only — the agent owns keyword variation (year, quality,
+    // original title) to maximize coverage. Quality is a preference it applies,
+    // not a hardcoded filter baked into the search.
+    keyword: title,
   };
 }
 
