@@ -88,6 +88,18 @@ export class Pan115CookieClient implements Pan115StorageApi {
     if (!responseState(response)) {
       throw new Error(`PAN115_LIST_ITEMS_FAILED: ${responseMessage(response)}`);
     }
+    // 115 silently treats a deleted/invalid cid as the account ROOT and returns
+    // root's children. The /files response echoes the cid it actually resolved;
+    // if that is not the cid we asked for, the directory is gone — refuse, do
+    // NOT hand back the fallback root's contents (enumerating then deleting them
+    // would wipe the user's library). Fail loud, never fall back to root.
+    if (!this.listResolvedToRequested(response, input.directoryId)) {
+      throw new Error(
+        `PAN115_DIRECTORY_NOT_FOUND: requested cid=${input.directoryId} but 115 resolved to ` +
+          `${stringValue(recordValue(response, "cid"))}. The directory was likely deleted; ` +
+          `refusing to operate on the fallback (root) directory.`,
+      );
+    }
     const items = arrayValue(recordValue(response, "data")).filter(isRecord) as Pan115Item[];
     const totalCount = numberValue(recordValue(response, "count"));
     if (totalCount > this.listLimit) {
@@ -99,19 +111,38 @@ export class Pan115CookieClient implements Pan115StorageApi {
   }
 
   async getDirectoryInfo(input: { directoryId: string }): Promise<Pan115DirectoryInfo | null> {
-    const response = await this.getJson(`${PAN115_WEBAPI_BASE_URL}/category/get`, [
+    // ONE /files call gives everything getDirectoryInfo needs: it echoes the cid
+    // 115 actually resolved (a deleted cid silently resolves to the account root,
+    // so a mismatch means the directory is gone) AND carries the full ancestor
+    // breadcrumb in `path`, INCLUDING this directory itself as the leaf with its
+    // real cid. So no category/get, no leaf synthesis, no separate existence
+    // probe — it shares the same endpoint and resolution guard as listItems.
+    const response = await this.getJson(`${PAN115_WEBAPI_BASE_URL}/files`, [
+      ["aid", "1"],
       ["cid", input.directoryId],
+      ["limit", "1"],
+      ["offset", "0"],
+      ["show_dir", "1"],
+      ["format", "json"],
     ]);
-    if (!responseState(response)) {
-      return {
-        state: false,
-        path: [],
-      };
+    if (!responseState(response) || !this.listResolvedToRequested(response, input.directoryId)) {
+      return { state: false, path: [] };
     }
-    return {
-      state: true,
-      path: directoryPathFromResponse(response, input.directoryId),
-    };
+    return { state: true, path: breadcrumbFromFilesResponse(response) };
+  }
+
+  /**
+   * 115 silently resolves a deleted/invalid cid to the account root and echoes
+   * the cid it actually listed in the /files response. So the resolved cid
+   * equalling the requested cid is the one reliable proof the directory is real
+   * and is itself — used both to fail `listItems` loud and to confirm existence
+   * in `getDirectoryInfo`. Root ("0") trivially resolves to itself.
+   */
+  private listResolvedToRequested(response: unknown, directoryId: string): boolean {
+    if (directoryId === "0") {
+      return true;
+    }
+    return stringValue(recordValue(response, "cid")) === directoryId;
   }
 
   async receiveShare(input: {
@@ -330,34 +361,18 @@ function responseMessage(response: unknown): string {
   );
 }
 
-function directoryPathFromResponse(
-  response: unknown,
-  requestedDirectoryId: string,
-): Pan115DirectoryInfo["path"] {
-  const pathItems = arrayValue(
-    recordValue(response, "paths") ?? recordValue(recordValue(response, "data"), "paths"),
-  ).filter(isRecord);
-  const path = pathItems
+// The 115 /files response carries the full ancestor breadcrumb in `path`,
+// from the account root down to and INCLUDING the queried directory itself,
+// each entry with its real cid. No synthesis needed (unlike category/get, which
+// omits the queried dir's own id).
+function breadcrumbFromFilesResponse(response: unknown): Pan115DirectoryInfo["path"] {
+  return arrayValue(recordValue(response, "path"))
+    .filter(isRecord)
     .map((item) => ({
-      cid: stringValue(recordValue(item, "cid") ?? recordValue(item, "file_id")),
-      name: stringValue(recordValue(item, "name") ?? recordValue(item, "file_name")),
+      cid: stringValue(recordValue(item, "cid")),
+      name: stringValue(recordValue(item, "name")),
     }))
     .filter((item) => item.cid || item.name);
-
-  // category/get returns `paths` as ancestors only and does not always echo
-  // the queried directory's own id back, so fall back to the requested cid.
-  // Safety checks (e.g. the flatten season-leaf rule) rely on the leaf being
-  // present as the last path element.
-  const current = {
-    cid:
-      stringValue(recordValue(response, "cid") ?? recordValue(response, "file_id")) ||
-      requestedDirectoryId,
-    name: stringValue(recordValue(response, "name") ?? recordValue(response, "file_name")),
-  };
-  if (current.cid && !path.some((item) => item.cid === current.cid)) {
-    path.push(current);
-  }
-  return path;
 }
 
 function buildShareReferer(shareCode: string, receiveCode: string): string {

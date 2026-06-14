@@ -82,25 +82,26 @@ describe("Pan115CookieClient", () => {
     );
   });
 
-  it("maps directory info paths from category/get", async () => {
-    const requests: RecordedRequest[] = [];
+  it("returns the ancestor breadcrumb from a single /files call (incl. the dir itself as leaf)", async () => {
+    // /files carries the full breadcrumb in `path`, root -> ... -> the queried
+    // directory, each with its real cid. One call, no category/get.
     const client = new Pan115CookieClient({
       cookie: "cookie",
-      fetchJson: recordFetch(requests, {
-        "https://webapi.115.com/category/get?cid=season_1": {
-          state: true,
-          paths: [
-            { file_id: 0, file_name: "root" },
-            { file_id: 100, file_name: "Media Track Test Root" },
-            { file_id: 101, file_name: "Show" },
-          ],
-          file_id: 102,
-          file_name: "Season 1",
-        },
+      fetchJson: async () => ({
+        state: true,
+        cid: "102",
+        count: 0,
+        data: [],
+        path: [
+          { cid: "0", name: "root" },
+          { cid: "100", name: "Media Track Test Root" },
+          { cid: "101", name: "Show" },
+          { cid: "102", name: "Season 1" },
+        ],
       }),
     });
 
-    await expect(client.getDirectoryInfo({ directoryId: "season_1" })).resolves.toEqual({
+    await expect(client.getDirectoryInfo({ directoryId: "102" })).resolves.toEqual({
       state: true,
       path: [
         { cid: "0", name: "root" },
@@ -109,35 +110,79 @@ describe("Pan115CookieClient", () => {
         { cid: "102", name: "Season 1" },
       ],
     });
-    expect(requests[0]?.method).toBe("GET");
   });
 
-  it("appends the requested directory as path leaf when category/get omits its id", async () => {
-    const requests: RecordedRequest[] = [];
+  it("includes the dir itself as the breadcrumb leaf for a directory directly under root", async () => {
     const client = new Pan115CookieClient({
       cookie: "cookie",
-      fetchJson: recordFetch(requests, {
-        "https://webapi.115.com/category/get?cid=season_1": {
-          state: true,
-          paths: [
-            { file_id: 0, file_name: "根目录" },
-            { file_id: 100, file_name: "test" },
-            { file_id: 101, file_name: "翘楚 (2026)" },
-          ],
-          file_name: "Season 1",
-        },
+      fetchJson: async () => ({
+        state: true,
+        cid: "container",
+        path: [
+          { cid: "0", name: "根目录" },
+          { cid: "container", name: "media-track-test" },
+        ],
       }),
     });
 
-    await expect(client.getDirectoryInfo({ directoryId: "season_1" })).resolves.toEqual({
+    await expect(client.getDirectoryInfo({ directoryId: "container" })).resolves.toEqual({
       state: true,
       path: [
         { cid: "0", name: "根目录" },
-        { cid: "100", name: "test" },
-        { cid: "101", name: "翘楚 (2026)" },
-        { cid: "season_1", name: "Season 1" },
+        { cid: "container", name: "media-track-test" },
       ],
     });
+  });
+
+  it("reports not-found when the cid resolves to root (deleted directory)", async () => {
+    // A deleted cid makes /files silently resolve to the account root (cid "0").
+    // getDirectoryInfo must report state:false — a flatten/write-scope safety
+    // check then refuses, instead of being handed the account root's path.
+    const client = new Pan115CookieClient({
+      cookie: "cookie",
+      fetchJson: async () => ({
+        state: true,
+        cid: "0",
+        count: 5,
+        data: [],
+        path: [{ cid: "0", name: "根目录" }],
+      }),
+    });
+
+    await expect(client.getDirectoryInfo({ directoryId: "deleted_cid" })).resolves.toEqual({
+      state: false,
+      path: [],
+    });
+  });
+
+  it("fails loud when 115 resolves the requested cid to a different directory (deleted → root)", async () => {
+    // 115 silently treats a deleted/invalid cid as the account root and returns
+    // ROOT's children. Operating on that (e.g. delete-all-children) would wipe
+    // the user's library. listItems must refuse instead of returning root.
+    const client = new Pan115CookieClient({
+      cookie: "cookie",
+      fetchJson: async () => ({
+        state: true,
+        cid: "0", // resolved to root, not the requested directory
+        count: 2,
+        data: [
+          { cid: "sys", n: "云下载", fc: "0" },
+          { cid: "prod", n: "clawd-media", fc: "0" },
+        ],
+      }),
+    });
+
+    await expect(client.listItems({ directoryId: "3351918746607287913" })).rejects.toThrow(
+      "PAN115_DIRECTORY_NOT_FOUND",
+    );
+  });
+
+  it("allows listing the real account root (cid 0)", async () => {
+    const client = new Pan115CookieClient({
+      cookie: "cookie",
+      fetchJson: async () => ({ state: true, cid: "0", count: 0, data: [] }),
+    });
+    await expect(client.listItems({ directoryId: "0" })).resolves.toEqual([]);
   });
 
   it("receives 115 share links into the target directory", async () => {
