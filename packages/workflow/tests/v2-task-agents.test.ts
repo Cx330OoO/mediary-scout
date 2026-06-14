@@ -66,6 +66,9 @@ describe("TV/anime system prompt carries the 字字泣血 invariants", () => {
     [/multi-season|complete-series|distribute.*season|moveToSeason\(fileIds, season\)/i, "multi-season pack distribution"],
     [/not recopied|already has|never recopy|leave the rest/i, "already-covered seasons not recopied"],
     [/unaired.*not missing|daily patrol|leave that gap|never fabricate/i, "ongoing/unobtainable honesty"],
+    [/silently fail|magnet can|trust the staging reread|秒传/i, "magnet silent-fail / trust the reread"],
+    [/never transfer a random|non-covering|clean the staging mess|never be left polluted/i, "no lucky-dip transfer; clean staging"],
+    [/black-box|opaque|publish time|last resort/i, "black-box last resort + publish time"],
   ])("mentions %s (%s)", (re) => {
     expect(prompt).toMatch(re);
   });

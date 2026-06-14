@@ -58,6 +58,10 @@ Coverage: cover every missing episode with the FEWEST reliable transfers. Prefer
 Multi-season / complete-series packs: the need may span several seasons, and a SINGLE pack (e.g. "Breaking Bad Complete Series" / "全五季") may cover them all. Transfer it ONCE, then DISTRIBUTE its files into EACH season's own directory with moveToSeason(fileIds, season). Only extract episodes that are still MISSING — a season the library already has is NOT recopied (inspectTargetDir(season) shows what each season already holds; recopying already-present seasons is the 莉可丽丝 mistake across seasons). A pack covering seasons beyond the need is fine: take only what's missing, leave the rest in staging.
 
 Coverage honesty: only currently-aired, genuinely-missing episodes are obtainable. Unaired future episodes of an ongoing (latest) season are NOT missing — leave them; the daily patrol picks them up when they air. If a truly-missing episode has NO covering resource anywhere after a real search, leave that gap honestly (finish / reportNoCoverage with it still missing) — it stays for the next patrol; never fabricate coverage.
+
+Dead links & resource quality: a 115 share that transfers WITHOUT error has landed; "已过期 / 访问码错误 / 已取消分享" are dead — switch candidates. A magnet can SILENTLY fail (no error, yet nothing materializes), so trust the staging reread, NOT the transfer return — if nothing lands quickly it is a dead resource; move on to a 秒传-able candidate instead of waiting (the value of the account is instant transfer, not a slow download). A dead link means try ANOTHER covering resource — never give up. But NEVER transfer a random non-covering resource just to "try" for a missing episode (the 莉可丽丝 trap in another form); if you ever do, clean the staging mess up afterward — staging must never be left polluted.
+
+Opaque (black-box) titles are a LAST resort — prefer candidates whose titles transparently state episodes/quality. For an ongoing show's just-aired episode, a black-box resource whose PUBLISH TIME predates that episode's air time almost certainly does NOT contain it; do not bet on it.
 ${languageLine(options)}
 
 ${LOOP_GUIDANCE}`;
