@@ -16,10 +16,35 @@ import {
 import { ensureDemoSeeded, getWorkflowRepository } from "../lib/workflow-runtime";
 import type { SearchCandidateCard, TrackedSeasonState } from "@media-track/workflow";
 
-export default async function Page({
+export default function Page({
   searchParams,
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // searchParams is a dynamic input. Reading it inside a Suspense boundary lets
+  // the static app shell prerender instead of the whole route blocking on it —
+  // this is what silences the cacheComponents "blocking-route" warning. The await
+  // resolves from the request URL (no I/O), so the fallback is effectively instant.
+  return (
+    <Suspense fallback={<HomeShell />}>
+      <HomeSurface searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+function HomeShell() {
+  return (
+    <div className="app-shell">
+      <AppSidebar active="search" />
+      <main className="main product-main" aria-busy="true" />
+    </div>
+  );
+}
+
+async function HomeSurface({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>> | undefined;
 }) {
   const params = (await searchParams) ?? {};
   const query = stringParam(params.q);
