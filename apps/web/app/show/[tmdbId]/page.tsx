@@ -111,7 +111,17 @@ function TvHub({ view }: { view: TitleHubView }) {
           )}
         </div>
         <div className="hub-title-block">
-          {badge ? <span className={`hub-badge tone-${badge.tone}`}>{badge.label}</span> : null}
+          {/* 缺集 and 在更 are orthogonal: a partial title whose latest season is
+              still releasing shows 追更中 alongside 部分入库 (斗破苍穹) — side by
+              side in a row, not stacked. */}
+          {badge ? (
+            <div className="hub-badges">
+              <span className={`hub-badge tone-${badge.tone}`}>{badge.label}</span>
+              {view.airing && view.aggregate === "partial" ? (
+                <span className="hub-badge tone-indigo">追更中</span>
+              ) : null}
+            </div>
+          ) : null}
           <h1>
             {view.title} <span className="hub-year">({view.year})</span>
           </h1>

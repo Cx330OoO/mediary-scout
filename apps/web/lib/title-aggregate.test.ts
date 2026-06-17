@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  aggregateAiring,
   aggregateStateFromSeasons,
+  libraryWallAiring,
   libraryWallState,
   seasonBadgeState,
   type AggregateSeasonInput,
@@ -73,6 +75,40 @@ describe("aggregateStateFromSeasons", () => {
         season({ status: "completed", obtainedCount: 0, latestAiredEpisode: 13, totalEpisodes: 13 }),
       ]),
     ).toBe("partial");
+  });
+});
+
+describe("aggregateAiring (orthogonal to completeness)", () => {
+  it("true when any tracked season is still active, even while the title is 缺集", () => {
+    // 斗破苍穹: S01 complete, S05 active but behind → partial AND airing.
+    const seasons = [
+      season({ status: "completed", obtainedCount: 13 }),
+      season({ status: "active", obtainedCount: 100, latestAiredEpisode: 203, totalEpisodes: 999 }),
+    ];
+    expect(aggregateStateFromSeasons(seasons)).toBe("partial");
+    expect(aggregateAiring(seasons)).toBe(true);
+  });
+
+  it("false when no tracked season is active (all completed)", () => {
+    expect(aggregateAiring([season({ status: "completed", obtainedCount: 13 })])).toBe(false);
+  });
+
+  it("false when nothing is tracked", () => {
+    expect(aggregateAiring([season({ tracked: false, status: null })])).toBe(false);
+  });
+});
+
+describe("libraryWallAiring (orthogonal to completeness)", () => {
+  it("true when released with an active season — pairs with partial for the dual badge", () => {
+    expect(libraryWallAiring({ anyActive: true, unreleased: false })).toBe(true);
+  });
+
+  it("false for an unreleased (reserved) title even if flagged active", () => {
+    expect(libraryWallAiring({ anyActive: true, unreleased: true })).toBe(false);
+  });
+
+  it("false when nothing is active", () => {
+    expect(libraryWallAiring({ anyActive: false, unreleased: false })).toBe(false);
   });
 });
 

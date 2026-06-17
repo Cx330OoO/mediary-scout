@@ -11,7 +11,9 @@ import {
 } from "@media-track/workflow";
 import { findDemoCandidateByTmdbId } from "./demo-candidates";
 import {
+  aggregateAiring,
   aggregateStateFromSeasons,
+  libraryWallAiring,
   libraryWallState,
   type LibraryWallStateValue,
   type TitleAggregateState,
@@ -51,6 +53,9 @@ export interface TitleHubView {
   posterPath: string | null;
   backdropPath: string | null;
   aggregate: TitleAggregateState;
+  /** Orthogonal to `aggregate`: any tracked season still airing. A partial title
+   *  that is also airing shows BOTH 部分入库 and 追更中. */
+  airing: boolean;
   seasons: TitleHubSeason[];
   untrackedSeasonNumbers: number[];
   /** A queued/running acquisition for this title — disables all acquire buttons. */
@@ -219,6 +224,7 @@ export async function getTitleHubView(tmdbId: number): Promise<TitleHubView | nu
     .filter((season) => !season.tracked)
     .map((season) => season.seasonNumber);
   const aggregate = aggregateStateFromSeasons(seasons);
+  const airing = aggregateAiring(seasons);
 
   const acquiring = (await repository.listActiveWorkflowRuns()).some(
     (snapshot) => snapshot.title.tmdbId === tmdbId,
@@ -229,6 +235,7 @@ export async function getTitleHubView(tmdbId: number): Promise<TitleHubView | nu
     tmdbId,
     ...meta,
     aggregate,
+    airing,
     seasons,
     untrackedSeasonNumbers,
     acquiring,
@@ -361,6 +368,9 @@ export interface LibraryWallEntry {
   /** Set for an unreleased (reserved) movie; drives the 预定 badge + air date. */
   releaseDate: string | null;
   state: LibraryWallStateValue;
+  /** Orthogonal to `state`: still releasing. A `partial` + `airing` card shows
+   *  both ⚠️有缺集 and 追更中. */
+  airing: boolean;
 }
 
 export interface LibraryTypeCounts {
@@ -418,6 +428,7 @@ export async function getLibraryWall(): Promise<LibraryWallEntry[]> {
       totalEpisodes: total,
       releaseDate: title.releaseDate ?? null,
       state: libraryWallState({ obtained, aired, anyActive, unreleased }),
+      airing: libraryWallAiring({ anyActive, unreleased }),
     });
   }
   return entries.sort((a, b) => a.title.localeCompare(b.title, "zh-Hans-CN"));

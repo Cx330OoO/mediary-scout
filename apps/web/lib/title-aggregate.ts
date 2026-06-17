@@ -65,6 +65,26 @@ export function libraryWallState(input: {
   return input.anyActive ? "tracking" : "complete";
 }
 
+/**
+ * Is the title still releasing new episodes? True when ANY tracked season is
+ * active. This is ORTHOGONAL to completeness: a 缺集 (partial) title whose latest
+ * season is still airing is both — so the card/detail draw the ⚠️ AND the 追更中
+ * badge instead of letting 缺集 swallow the still-updating signal (达顿牧场 vs
+ * 斗破苍穹). A finished title (no active season) is not airing.
+ */
+export function aggregateAiring(seasons: AggregateSeasonInput[]): boolean {
+  return seasons.some((season) => season.tracked && season.status === "active");
+}
+
+/**
+ * The poster-wall counterpart of {@link aggregateAiring}, fed the already-reduced
+ * `anyActive`. A reserved (unreleased) movie is never "airing" — it simply hasn't
+ * come out — so the dual badge can't appear on it.
+ */
+export function libraryWallAiring(input: { anyActive: boolean; unreleased: boolean }): boolean {
+  return input.anyActive && !input.unreleased;
+}
+
 export function aggregateStateFromSeasons(seasons: AggregateSeasonInput[]): TitleAggregateState {
   const states = seasons.map(seasonBadgeState);
   if (states.every((state) => state === "untracked")) {

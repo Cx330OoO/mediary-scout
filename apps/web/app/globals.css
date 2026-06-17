@@ -1555,6 +1555,15 @@ p {
 }
 
 /* Status badges (Overseerr ramp: green=have, indigo=in progress, amber=waiting) */
+/* Row of header badges (e.g. 部分入库 + 追更中) — side by side with breathing
+   room, not each on its own line in the title column. */
+.hub-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .hub-badge {
   display: inline-flex;
   align-items: center;
@@ -1654,10 +1663,18 @@ p {
   text-align: center;
 }
 
-.wall-state {
+/* Stack of state badges, top-right. Usually one; a 缺集-且-在更 card carries two
+   (⚠️ + 追更中) without overlapping. */
+.wall-states {
   position: absolute;
   top: 8px;
   right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wall-state {
   display: grid;
   place-items: center;
   width: 24px;

@@ -497,15 +497,20 @@ function InProgressCard({ title }: { title: InProgressTitle }) {
 }
 
 function PosterCard({ entry }: { entry: LibraryWallEntry }) {
-  const stateMeta =
+  // Completeness and "still airing" are orthogonal: a 缺集 title whose latest
+  // season is still releasing shows BOTH ⚠️有缺集 and 追更中 (斗破苍穹), so the
+  // blue/indigo "在更" signal isn't swallowed by the warning (parity with 达顿牧场).
+  const badges =
     entry.state === "reserved"
-      ? { tone: "blue", icon: CalendarClock, label: "预定（未上映）" }
+      ? [{ tone: "blue", icon: CalendarClock, label: "预定（未上映）" }]
       : entry.state === "complete"
-        ? { tone: "green", icon: CheckCircle2, label: "已全部入库" }
+        ? [{ tone: "green", icon: CheckCircle2, label: "已全部入库" }]
         : entry.state === "tracking"
-          ? { tone: "indigo", icon: Clock3, label: "追更中" }
-          : { tone: "amber", icon: TriangleAlert, label: "有缺集" };
-  const StateIcon = stateMeta.icon;
+          ? [{ tone: "indigo", icon: Clock3, label: "追更中" }]
+          : [
+              { tone: "amber", icon: TriangleAlert, label: "有缺集" },
+              ...(entry.airing ? [{ tone: "indigo", icon: Clock3, label: "追更中" }] : []),
+            ];
 
   return (
     <Link className="wall-card" href={`/show/${entry.tmdbId}?from=library`}>
@@ -516,8 +521,15 @@ function PosterCard({ entry }: { entry: LibraryWallEntry }) {
         ) : (
           <span className="poster-fallback">{entry.title.slice(0, 4)}</span>
         )}
-        <span className={`wall-state tone-${stateMeta.tone}`} title={stateMeta.label}>
-          <StateIcon size={13} aria-hidden />
+        <span className="wall-states">
+          {badges.map((badge) => {
+            const BadgeIcon = badge.icon;
+            return (
+              <span className={`wall-state tone-${badge.tone}`} title={badge.label} key={badge.label}>
+                <BadgeIcon size={13} aria-hidden />
+              </span>
+            );
+          })}
         </span>
       </span>
       <span className="wall-copy">
