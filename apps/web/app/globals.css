@@ -1181,7 +1181,7 @@ p {
    events, routine) keep the plain single-column layout. */
 .feed-card.has-poster {
   flex-direction: row;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 14px;
 }
 

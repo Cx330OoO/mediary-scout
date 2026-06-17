@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { collapseToRanges } from "../../lib/episode-ranges";
 import {
   Bell,
   CalendarClock,
@@ -206,13 +207,18 @@ function ChipGroup({ label, codes, variant }: { label: string; codes: string[]; 
   if (codes.length === 0) {
     return null;
   }
+  // Collapse contiguous episodes into ranges so a 164-episode acquisition is a few
+  // tokens (E01–E164 · E170 · E175–E178), not 164 chips that stretch the card.
+  const ranges = collapseToRanges(codes);
   return (
     <span className="feed-chip-group">
-      <span className="feed-chip-label">{label}</span>
+      <span className="feed-chip-label">
+        {label} {codes.length}
+      </span>
       <span className="feed-chips">
-        {codes.map((code) => (
-          <span className={`feed-chip ${variant}`} key={code}>
-            {code}
+        {ranges.map((range) => (
+          <span className={`feed-chip ${variant}`} key={range}>
+            {range}
           </span>
         ))}
       </span>
