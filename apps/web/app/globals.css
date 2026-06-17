@@ -2509,8 +2509,8 @@ select.setting-control {
 }
 
 .act-poster {
-  width: 52px;
-  height: 78px;
+  width: 46px;
+  height: 69px;
   border-radius: 8px;
   object-fit: cover;
   flex: none;
@@ -2636,7 +2636,6 @@ select.setting-control {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin-left: auto;
   font-size: 11px;
   padding: 2px 9px;
   border-radius: 999px;
@@ -2650,6 +2649,7 @@ select.setting-control {
 
 .act-cancel {
   flex: none;
+  margin-left: auto;
   display: grid;
   place-items: center;
   width: 26px;
@@ -2670,6 +2670,7 @@ select.setting-control {
 .act-confirm {
   display: inline-flex;
   gap: 6px;
+  margin-left: auto;
 }
 
 .act-confirm-yes,
